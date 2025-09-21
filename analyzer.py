@@ -1,0 +1,346 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+from typing import List, Tuple, Dict, Any, Optional
+from collections import Counter
+import statistics
+from database import DatabaseManager
+
+class StatisticalAnalyzer:
+    """Realiza análisis estadísticos de los datos de lotería"""
+    
+    def __init__(self, db_manager: DatabaseManager):
+        self.db = db_manager
+        self.number_range = (0, 99)  # Rango típico para Quiniela
+        
+    def calculate_all_frequencies(self, days: int = 180) -> List[Tuple[int, int, float, str]]:
+        """
+        Calcula frecuencias para todos los números
+        
+        Returns:
+            List[Tuple]: [(numero, freq_absoluta, freq_relativa, clasificacion), ...]
+        """
+        frequency_data = self.db.get_all_numbers_frequency(days)
+        
+        if not frequency_data:
+            return []
+        
+        # Calcular estadísticas para clasificación
+        frequencies = [freq for _, freq, _ in frequency_data]
+        if not frequencies:
+            return []
+        
+        mean_freq = statistics.mean(frequencies)
+        std_freq = statistics.stdev(frequencies) if len(frequencies) > 1 else 0
+        
+        # Umbrales para clasificación
+        hot_threshold = mean_freq + (0.5 * std_freq)
+        cold_threshold = mean_freq - (0.5 * std_freq)
+        
+        results = []
+        for number, abs_freq, rel_freq in frequency_data:
+            # Clasificar número
+            if abs_freq >= hot_threshold:
+                classification = "Caliente"
+            elif abs_freq <= cold_threshold:
+                classification = "Frío"
+            else:
+                classification = "Normal"
+            
+            results.append((number, abs_freq, rel_freq, classification))
+        
+        return results
+    
+    def get_hot_numbers(self, days: int = 180, limit: int = 10) -> List[Tuple[int, int, float]]:
+        """
+        Obtiene los números más frecuentes (calientes)
+        
+        Returns:
+            List[Tuple]: [(numero, frecuencia, frecuencia_relativa), ...]
+        """
+        all_frequencies = self.db.get_all_numbers_frequency(days)
+        
+        # Ordenar por frecuencia descendente
+        sorted_frequencies = sorted(all_frequencies, key=lambda x: x[1], reverse=True)
+        
+        return sorted_frequencies[:limit]
+    
+    def get_cold_numbers(self, days: int = 180, limit: int = 10) -> List[Tuple[int, int, float]]:
+        """
+        Obtiene los números menos frecuentes (fríos)
+        
+        Returns:
+            List[Tuple]: [(numero, frecuencia, frecuencia_relativa), ...]
+        """
+        all_frequencies = self.db.get_all_numbers_frequency(days)
+        
+        # Obtener todos los números posibles
+        all_possible_numbers = set(range(self.number_range[0], self.number_range[1] + 1))
+        appearing_numbers = {num for num, _, _ in all_frequencies}
+        missing_numbers = all_possible_numbers - appearing_numbers
+        
+        # Agregar números que no han aparecido
+        extended_frequencies = list(all_frequencies)
+        for missing_num in missing_numbers:
+            extended_frequencies.append((missing_num, 0, 0.0))
+        
+        # Ordenar por frecuencia ascendente
+        sorted_frequencies = sorted(extended_frequencies, key=lambda x: x[1])
+        
+        return sorted_frequencies[:limit]
+    
+    def analyze_by_ranges(self, days: int = 180) -> List[Tuple[str, float, int]]:
+        """
+        Analiza frecuencias por rangos de números
+        
+        Returns:
+            List[Tuple]: [(rango, frecuencia_promedio, count_numeros), ...]
+        """
+        all_frequencies = self.db.get_all_numbers_frequency(days)
+        
+        if not all_frequencies:
+            return []
+        
+        # Definir rangos
+        ranges = [
+            ("00-09", 0, 9),
+            ("10-19", 10, 19),
+            ("20-29", 20, 29),
+            ("30-39", 30, 39),
+            ("40-49", 40, 49),
+            ("50-59", 50, 59),
+            ("60-69", 60, 69),
+            ("70-79", 70, 79),
+            ("80-89", 80, 89),
+            ("90-99", 90, 99)
+        ]
+        
+        range_analysis = []
+        
+        for range_name, min_num, max_num in ranges:
+            range_frequencies = [
+                freq for num, freq, _ in all_frequencies 
+                if min_num <= num <= max_num
+            ]
+            
+            if range_frequencies:
+                avg_frequency = statistics.mean(range_frequencies)
+                num_count = len(range_frequencies)
+            else:
+                avg_frequency = 0.0
+                num_count = 0
+            
+            range_analysis.append((range_name, avg_frequency, num_count))
+        
+        return range_analysis
+    
+    def get_temporal_trends(self, days: int = 180) -> List[Dict[str, Any]]:
+        """
+        Analiza tendencias temporales en las frecuencias
+        
+        Returns:
+            List[Dict]: [{'Fecha': date, 'Frecuencia_Promedio': float}, ...]
+        """
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Obtener datos por períodos semanales
+        temporal_data = []
+        current_date = start_date
+        
+        while current_date < end_date:
+            week_end = min(current_date + timedelta(days=7), end_date)
+            
+            # Obtener sorteos de la semana
+            week_draws = self.db.get_numbers_by_date_range(current_date, week_end)
+            
+            if week_draws:
+                # Calcular frecuencia promedio de la semana
+                numbers_count = Counter([num for _, num in week_draws])
+                avg_frequency = statistics.mean(numbers_count.values()) if numbers_count else 0
+            else:
+                avg_frequency = 0
+            
+            temporal_data.append({
+                'Fecha': current_date.strftime('%Y-%m-%d'),
+                'Frecuencia_Promedio': avg_frequency
+            })
+            
+            current_date = week_end
+        
+        return temporal_data
+    
+    def calculate_correlations(self, days: int = 180) -> List[Tuple[int, int, float, str]]:
+        """
+        Calcula correlaciones entre números
+        
+        Returns:
+            List[Tuple]: [(num1, num2, correlacion, significancia), ...]
+        """
+        # Obtener datos del período
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+        
+        if len(draws_data) < 10:  # Necesitamos datos suficientes
+            return []
+        
+        # Organizar datos por fecha
+        dates_numbers = {}
+        for date_str, number in draws_data:
+            if date_str not in dates_numbers:
+                dates_numbers[date_str] = []
+            dates_numbers[date_str].append(number)
+        
+        # Calcular correlaciones simples (apariciones conjuntas)
+        correlations = []
+        unique_numbers = sorted(set(num for _, num in draws_data))
+        
+        for i, num1 in enumerate(unique_numbers):
+            for num2 in unique_numbers[i+1:]:
+                # Contar apariciones conjuntas
+                joint_appearances = 0
+                total_dates = len(dates_numbers)
+                
+                for date_numbers in dates_numbers.values():
+                    if num1 in date_numbers and num2 in date_numbers:
+                        joint_appearances += 1
+                
+                # Calcular correlación simple
+                correlation = joint_appearances / total_dates if total_dates > 0 else 0
+                
+                # Determinar significancia
+                if correlation > 0.1:
+                    significance = "Alta"
+                elif correlation > 0.05:
+                    significance = "Media"
+                else:
+                    significance = "Baja"
+                
+                correlations.append((num1, num2, correlation, significance))
+        
+        # Ordenar por correlación descendente
+        correlations.sort(key=lambda x: x[2], reverse=True)
+        
+        return correlations[:20]  # Top 20 correlaciones
+    
+    def get_performance_statistics(self) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas generales de rendimiento
+        """
+        try:
+            unique_numbers = self.db.get_unique_numbers()
+            total_draws = self.db.get_total_draws()
+            
+            # Calcular estadísticas básicas
+            stats = {
+                'unique_numbers': len(unique_numbers),
+                'total_draws': total_draws,
+                'avg_draws_per_day': 0,
+                'most_frequent_number': None,
+                'least_frequent_number': None,
+                'coverage_period_days': self.db.get_data_coverage_days()
+            }
+            
+            if stats['coverage_period_days'] > 0:
+                stats['avg_draws_per_day'] = total_draws / stats['coverage_period_days']
+            
+            # Obtener números más y menos frecuentes
+            all_frequencies = self.db.get_all_numbers_frequency(days=365)  # Último año
+            
+            if all_frequencies:
+                # Más frecuente
+                most_frequent = max(all_frequencies, key=lambda x: x[1])
+                stats['most_frequent_number'] = f"{most_frequent[0]} ({most_frequent[1]} veces)"
+                
+                # Menos frecuente (excluyendo los que nunca aparecieron)
+                appearing_frequencies = [f for f in all_frequencies if f[1] > 0]
+                if appearing_frequencies:
+                    least_frequent = min(appearing_frequencies, key=lambda x: x[1])
+                    stats['least_frequent_number'] = f"{least_frequent[0]} ({least_frequent[1]} veces)"
+            
+            return stats
+            
+        except Exception as e:
+            print(f"Error calculando estadísticas: {e}")
+            return {
+                'unique_numbers': 0,
+                'total_draws': 0,
+                'avg_draws_per_day': 0,
+                'most_frequent_number': 'N/A',
+                'least_frequent_number': 'N/A',
+                'coverage_period_days': 0
+            }
+    
+    def analyze_number_patterns(self, days: int = 180) -> Dict[str, Any]:
+        """
+        Analiza patrones en los números ganadores
+        """
+        all_frequencies = self.db.get_all_numbers_frequency(days)
+        
+        if not all_frequencies:
+            return {}
+        
+        numbers = [num for num, _, _ in all_frequencies]
+        frequencies = [freq for _, freq, _ in all_frequencies]
+        
+        patterns = {
+            'total_unique_numbers': len(numbers),
+            'most_common_digit_units': Counter([num % 10 for num in numbers]),
+            'most_common_digit_tens': Counter([num // 10 for num in numbers]),
+            'even_odd_distribution': {
+                'even': len([n for n in numbers if n % 2 == 0]),
+                'odd': len([n for n in numbers if n % 2 == 1])
+            },
+            'frequency_distribution': {
+                'mean': statistics.mean(frequencies) if frequencies else 0,
+                'median': statistics.median(frequencies) if frequencies else 0,
+                'std_dev': statistics.stdev(frequencies) if len(frequencies) > 1 else 0
+            }
+        }
+        
+        return patterns
+    
+    def get_prediction_confidence_score(self, number: int, days: int = 180) -> float:
+        """
+        Calcula un puntaje de confianza para la predicción de un número
+        
+        Returns:
+            float: Puntaje de confianza entre 0 y 1
+        """
+        try:
+            # Obtener frecuencia del número
+            abs_freq, rel_freq = self.db.get_number_frequency(number, days)
+            
+            # Obtener estadísticas generales
+            all_frequencies = self.db.get_all_numbers_frequency(days)
+            
+            if not all_frequencies:
+                return 0.0
+            
+            frequencies = [freq for _, freq, _ in all_frequencies]
+            mean_freq = statistics.mean(frequencies)
+            max_freq = max(frequencies)
+            
+            # Calcular puntaje base en frecuencia relativa
+            base_score = rel_freq
+            
+            # Ajustar por frecuencia en relación al promedio
+            if mean_freq > 0:
+                frequency_factor = abs_freq / mean_freq
+                frequency_factor = min(frequency_factor, 2.0)  # Limitar factor
+            else:
+                frequency_factor = 0.0
+            
+            # Calcular puntaje final (combinación de factores)
+            confidence_score = (base_score * 0.6) + (frequency_factor * 0.4 / 2.0)
+            
+            # Normalizar entre 0 y 1
+            confidence_score = min(max(confidence_score, 0.0), 1.0)
+            
+            return confidence_score
+            
+        except Exception as e:
+            print(f"Error calculando confianza para número {number}: {e}")
+            return 0.0
