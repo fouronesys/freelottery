@@ -79,12 +79,13 @@ prediction_method = st.sidebar.selectbox(
 )
 
 # Pestañas principales
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📈 Dashboard Principal",
     "🔢 Análisis de Números",
     "🎯 Predicciones",
     "📊 Estadísticas Avanzadas",
-    "⏰ Análisis Temporal"
+    "⏰ Análisis Temporal",
+    "🤝 Co-ocurrencia y Patrones"
 ])
 
 with tab1:
@@ -632,6 +633,207 @@ with tab5:
     
     else:
         st.warning("⚠️ Se requieren datos históricos para el análisis temporal.")
+
+with tab6:
+    st.header("🤝 Análisis de Co-ocurrencia y Patrones")
+    
+    if total_draws > 0:
+        # Análisis de co-ocurrencia
+        st.subheader("🔗 Co-ocurrencia de Números")
+        st.write("Análisis de qué números aparecen juntos con mayor frecuencia en el mismo sorteo.")
+        
+        # Controles para co-ocurrencia
+        col1, col2 = st.columns(2)
+        with col1:
+            cooccurrence_days = st.selectbox(
+                "Período de análisis para co-ocurrencia",
+                [90, 180, 365, 720],
+                index=1,
+                help="Días hacia atrás para analizar co-ocurrencias"
+            )
+        
+        with col2:
+            min_cooccurrence = st.number_input(
+                "Frecuencia mínima de co-ocurrencia",
+                min_value=2,
+                max_value=20,
+                value=3,
+                help="Número mínimo de veces que deben aparecer juntos"
+            )
+        
+        # Calcular co-ocurrencias
+        with st.spinner("Analizando co-ocurrencias..."):
+            cooccurrences = analyzer.analyze_number_cooccurrence(days=cooccurrence_days)
+        
+        if cooccurrences:
+            # Crear tabla de las mejores co-ocurrencias
+            best_pairs = []
+            for num1, partners in cooccurrences.items():
+                for num2, freq in partners.items():
+                    if freq >= min_cooccurrence and num1 < num2:  # Evitar duplicados
+                        best_pairs.append({
+                            'Número 1': num1,
+                            'Número 2': num2,
+                            'Frecuencia': freq,
+                            'Par': f"{num1}-{num2}"
+                        })
+            
+            if best_pairs:
+                df_pairs = pd.DataFrame(best_pairs)
+                df_pairs = df_pairs.sort_values('Frecuencia', ascending=False)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("🏆 Mejores Pares")
+                    st.dataframe(df_pairs.head(20), width='stretch')
+                
+                with col2:
+                    # Gráfico de barras de mejores pares
+                    top_pairs = df_pairs.head(15)
+                    fig = px.bar(
+                        top_pairs,
+                        x='Par',
+                        y='Frecuencia',
+                        title="Top 15 Pares Más Frecuentes",
+                        labels={'Frecuencia': 'Veces que Aparecieron Juntos'}
+                    )
+                    fig.update_xaxes(tickangle=45)
+                    st.plotly_chart(fig, width='stretch')
+            else:
+                st.info("No se encontraron pares con la frecuencia mínima especificada.")
+        else:
+            st.warning("No se pudieron calcular co-ocurrencias para el período seleccionado.")
+        
+        # Análisis de transiciones de dígitos
+        st.subheader("🔄 Transiciones de Dígitos")
+        st.write("Análisis de cómo cambian los dígitos de un número al siguiente en secuencias temporales.")
+        
+        transition_days = st.selectbox(
+            "Período para análisis de transiciones",
+            [30, 60, 90, 180],
+            index=2,
+            help="Días para analizar transiciones de dígitos"
+        )
+        
+        with st.spinner("Analizando transiciones de dígitos..."):
+            transitions = analyzer.analyze_digit_transitions(days=transition_days)
+        
+        if transitions:
+            # Mostrar transiciones más frecuentes
+            transition_data = []
+            for key, next_digits in transitions.items():
+                for next_digit, freq in next_digits.items():
+                    if freq >= 2:  # Mínimo 2 ocurrencias
+                        transition_data.append({
+                            'Transición': f"{key} → {next_digit}",
+                            'Frecuencia': freq,
+                            'Posición': key.split('_')[1],
+                            'De': key.split('_')[2],
+                            'A': next_digit
+                        })
+            
+            if transition_data:
+                df_transitions = pd.DataFrame(transition_data)
+                df_transitions = df_transitions.sort_values('Frecuencia', ascending=False)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("🔄 Transiciones Más Frecuentes")
+                    st.dataframe(df_transitions.head(20), width='stretch')
+                
+                with col2:
+                    # Gráfico de transiciones por posición
+                    pos_0 = df_transitions[df_transitions['Posición'] == '0'].head(10)
+                    if len(pos_0) > 0:
+                        fig = px.bar(
+                            pos_0,
+                            x='Transición',
+                            y='Frecuencia',
+                            title="Top Transiciones - Primera Posición",
+                            labels={'Frecuencia': 'Cantidad de Transiciones'}
+                        )
+                        fig.update_xaxes(tickangle=45)
+                        st.plotly_chart(fig, width='stretch')
+        else:
+            st.warning("No se pudieron calcular transiciones para el período seleccionado.")
+        
+        # Patrones de combinación
+        st.subheader("🧩 Patrones de Combinación")
+        st.write("Análisis de patrones matemáticos en las combinaciones de números (suma, paridad, rangos).")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            pattern_days = st.selectbox(
+                "Período para patrones",
+                [90, 180, 365],
+                index=1,
+                help="Días para analizar patrones de combinación"
+            )
+        
+        with col2:
+            min_pattern_freq = st.number_input(
+                "Frecuencia mínima del patrón",
+                min_value=3,
+                max_value=20,
+                value=5,
+                help="Mínimas ocurrencias para considerar un patrón válido"
+            )
+        
+        with st.spinner("Buscando patrones de combinación..."):
+            patterns = analyzer.find_combination_patterns(
+                min_frequency=min_pattern_freq, 
+                days=pattern_days
+            )
+        
+        if patterns:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Patrones de suma
+                sum_patterns = [p for p in patterns if p['type'] == 'suma_rango']
+                if sum_patterns:
+                    st.subheader("➕ Patrones de Suma")
+                    for pattern in sum_patterns[:10]:
+                        st.write(f"**Rango {pattern['pattern']}**: {pattern['frequency']} veces")
+                        with st.expander(f"Ejemplos de {pattern['pattern']}"):
+                            for example in pattern['examples']:
+                                st.write(f"• {example} (suma: {sum(example)})")
+            
+            with col2:
+                # Patrones de paridad
+                parity_patterns = [p for p in patterns if p['type'] == 'paridad']
+                if parity_patterns:
+                    st.subheader("⚖️ Patrones de Paridad")
+                    for pattern in parity_patterns[:10]:
+                        st.write(f"**{pattern['pattern']}**: {pattern['frequency']} veces")
+                        with st.expander(f"Ejemplos de {pattern['pattern']}"):
+                            for example in pattern['examples']:
+                                st.write(f"• {example}")
+            
+            # Gráfico resumen de patrones
+            if len(patterns) > 0:
+                pattern_df = pd.DataFrame(patterns)
+                fig = px.bar(
+                    pattern_df.head(15),
+                    x='pattern',
+                    y='frequency',
+                    color='type',
+                    title="Patrones de Combinación Más Frecuentes",
+                    labels={
+                        'frequency': 'Frecuencia',
+                        'pattern': 'Patrón',
+                        'type': 'Tipo de Patrón'
+                    }
+                )
+                fig.update_xaxes(tickangle=45)
+                st.plotly_chart(fig, width='stretch')
+        else:
+            st.info("No se encontraron patrones con la frecuencia mínima especificada.")
+    
+    else:
+        st.warning("⚠️ Se requieren datos históricos para el análisis de co-ocurrencia y patrones.")
 
 # Footer
 st.markdown("---")

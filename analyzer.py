@@ -560,3 +560,184 @@ class StatisticalAnalyzer:
         except Exception as e:
             print(f"Error detectando cambios de frecuencia: {e}")
             return []
+    
+    def analyze_number_cooccurrence(self, days: int = 365) -> Dict[int, Dict[int, int]]:
+        """
+        Analiza co-ocurrencia de números en el mismo sorteo
+        
+        Args:
+            days: Período de análisis
+            
+        Returns:
+            Dict[int, Dict[int, int]]: Número -> {Número compañero: frecuencia}
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws = self.db.get_draws_by_date_range(start_date, end_date)
+            
+            if not draws:
+                return {}
+            
+            cooccurrence = defaultdict(lambda: defaultdict(int))
+            
+            # Agrupar números por sorteo
+            draws_by_id = defaultdict(list)
+            for draw_id, number, date in draws:
+                draws_by_id[draw_id].append(number)
+            
+            # Calcular co-ocurrencias
+            for draw_id, numbers in draws_by_id.items():
+                unique_numbers = list(set(numbers))  # Eliminar duplicados si los hay
+                
+                # Para cada par de números en el mismo sorteo
+                for i, num1 in enumerate(unique_numbers):
+                    for num2 in unique_numbers[i+1:]:
+                        cooccurrence[num1][num2] += 1
+                        cooccurrence[num2][num1] += 1  # Simétrico
+            
+            return dict(cooccurrence)
+            
+        except Exception as e:
+            print(f"Error analizando co-ocurrencia: {e}")
+            return {}
+    
+    def analyze_digit_transitions(self, days: int = 365) -> Dict[str, Dict[str, int]]:
+        """
+        Analiza transiciones entre dígitos de números consecutivos
+        
+        Args:
+            days: Período de análisis
+            
+        Returns:
+            Dict[str, Dict[str, int]]: Dígito -> {Siguiente dígito: frecuencia}
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws = self.db.get_draws_by_date_range(start_date, end_date)
+            
+            if not draws:
+                return {}
+            
+            transitions = defaultdict(lambda: defaultdict(int))
+            
+            # Ordenar por fecha para analizar secuencias temporales
+            draws_sorted = sorted(draws, key=lambda x: x[2])  # Ordenar por fecha
+            
+            previous_number = None
+            for draw_id, number, date in draws_sorted:
+                if previous_number is not None:
+                    # Analizar transición dígito a dígito
+                    prev_str = str(previous_number).zfill(2)
+                    curr_str = str(number).zfill(2)
+                    
+                    # Transiciones de cada posición
+                    for i in range(min(len(prev_str), len(curr_str))):
+                        prev_digit = prev_str[i]
+                        curr_digit = curr_str[i]
+                        transitions[f"pos_{i}_{prev_digit}"][curr_digit] += 1
+                
+                previous_number = number
+            
+            return dict(transitions)
+            
+        except Exception as e:
+            print(f"Error analizando transiciones de dígitos: {e}")
+            return {}
+    
+    def find_combination_patterns(self, min_frequency: int = 3, days: int = 365) -> List[Dict[str, Any]]:
+        """
+        Encuentra patrones en combinaciones de números
+        
+        Args:
+            min_frequency: Frecuencia mínima para considerar un patrón
+            days: Período de análisis
+            
+        Returns:
+            List[Dict[str, Any]]: Lista de patrones encontrados
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws = self.db.get_draws_by_date_range(start_date, end_date)
+            
+            if not draws:
+                return []
+            
+            # Agrupar números por sorteo
+            draws_by_id = defaultdict(list)
+            for draw_id, number, date in draws:
+                draws_by_id[draw_id].append(number)
+            
+            patterns = []
+            
+            # Analizar patrones de suma, paridad, rangos
+            for draw_id, numbers in draws_by_id.items():
+                unique_numbers = list(set(numbers))
+                
+                if len(unique_numbers) >= 2:
+                    # Patrón de suma
+                    total_sum = sum(unique_numbers)
+                    
+                    # Patrón de paridad
+                    even_count = sum(1 for n in unique_numbers if n % 2 == 0)
+                    odd_count = len(unique_numbers) - even_count
+                    
+                    # Patrón de rango
+                    min_num = min(unique_numbers)
+                    max_num = max(unique_numbers)
+                    range_span = max_num - min_num
+                    
+                    patterns.append({
+                        'draw_id': draw_id,
+                        'numbers': sorted(unique_numbers),
+                        'sum': total_sum,
+                        'even_count': even_count,
+                        'odd_count': odd_count,
+                        'range_span': range_span,
+                        'min_num': min_num,
+                        'max_num': max_num
+                    })
+            
+            # Encontrar patrones frecuentes
+            frequent_patterns = []
+            
+            # Analizar rangos de suma frecuentes
+            sum_ranges = defaultdict(list)
+            for pattern in patterns:
+                sum_range = (pattern['sum'] // 50) * 50  # Agrupar en rangos de 50
+                sum_ranges[sum_range].append(pattern)
+            
+            for sum_range, pattern_list in sum_ranges.items():
+                if len(pattern_list) >= min_frequency:
+                    frequent_patterns.append({
+                        'type': 'suma_rango',
+                        'pattern': f"{sum_range}-{sum_range + 49}",
+                        'frequency': len(pattern_list),
+                        'examples': [p['numbers'] for p in pattern_list[:3]]
+                    })
+            
+            # Analizar patrones de paridad
+            parity_patterns = defaultdict(list)
+            for pattern in patterns:
+                parity_key = f"{pattern['even_count']}E-{pattern['odd_count']}O"
+                parity_patterns[parity_key].append(pattern)
+            
+            for parity_key, pattern_list in parity_patterns.items():
+                if len(pattern_list) >= min_frequency:
+                    frequent_patterns.append({
+                        'type': 'paridad',
+                        'pattern': parity_key,
+                        'frequency': len(pattern_list),
+                        'examples': [p['numbers'] for p in pattern_list[:3]]
+                    })
+            
+            return sorted(frequent_patterns, key=lambda x: x['frequency'], reverse=True)
+            
+        except Exception as e:
+            print(f"Error encontrando patrones de combinación: {e}")
+            return []
