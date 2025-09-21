@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: quiniela-loteka-analysis
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "bash start.sh"
+    plan: free
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+    scaling:
+      minInstances: 1
+      maxInstances: 1

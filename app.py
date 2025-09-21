@@ -12,6 +12,25 @@ from analyzer import StatisticalAnalyzer
 from predictor import LotteryPredictor
 from utils import format_currency, format_percentage
 
+# Caching para análisis complejos
+@st.cache_data(ttl=3600)  # Cache por 1 hora
+def cached_complex_analysis(analysis_type: str, days: int):
+    """Cache para análisis estadísticos complejos"""
+    analyzer = StatisticalAnalyzer(DatabaseManager())
+    
+    if analysis_type == "autocorrelation":
+        return analyzer.analyze_autocorrelation(days)
+    elif analysis_type == "time_series":
+        return analyzer.analyze_time_series_patterns(days)
+    elif analysis_type == "randomness":
+        return analyzer.test_randomness_quality(days)
+    elif analysis_type == "clustering":
+        return analyzer.analyze_number_clustering(days)
+    elif analysis_type == "formula":
+        return analyzer.create_predictive_formula(days)
+    
+    return {}
+
 # Configuración de la página
 st.set_page_config(
     page_title="Análisis Estadístico Quiniela Loteka",
@@ -79,14 +98,15 @@ prediction_method = st.sidebar.selectbox(
 )
 
 # Pestañas principales
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "📈 Dashboard Principal",
     "🔢 Análisis de Números",
     "🎯 Predicciones",
     "📊 Estadísticas Avanzadas",
     "⏰ Análisis Temporal",
     "🤝 Co-ocurrencia y Patrones",
-    "📅 Recomendaciones por Día"
+    "📅 Recomendaciones por Día",
+    "🧠 Análisis Estadístico Complejo"
 ])
 
 with tab1:
@@ -1064,6 +1084,334 @@ with tab7:
         
     else:
         st.warning("⚠️ Se requieren datos históricos para generar recomendaciones por día.")
+
+with tab8:
+    st.header("🧠 Análisis Estadístico Complejo y Fórmulas Predictivas")
+    st.write("Análisis estadísticos avanzados basados en autocorrelación, series temporales, clustering y tests de aleatoriedad.")
+    
+    if total_draws > 0:
+        # Panel de configuración
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            complex_analysis_days = st.selectbox(
+                "Período para análisis complejo",
+                [180, 365, 720],
+                index=1,
+                help="Días históricos para análisis estadístico complejo"
+            )
+        
+        with col2:
+            analysis_type = st.selectbox(
+                "Tipo de análisis",
+                ["Fórmula Predictiva Completa", "Autocorrelación", "Series Temporales", "Clustering", "Tests de Aleatoriedad"],
+                help="Selecciona el tipo de análisis a ejecutar"
+            )
+        
+        if st.button("🧮 Ejecutar Análisis Estadístico Complejo", type="primary"):
+            
+            if analysis_type == "Fórmula Predictiva Completa":
+                with st.spinner("Ejecutando análisis integrado completo..."):
+                    formula_results = analyzer.create_predictive_formula(days=complex_analysis_days)
+                    
+                    if formula_results:
+                        st.success("✅ Fórmula predictiva generada exitosamente")
+                        
+                        # Mostrar fórmula matemática
+                        st.subheader("📐 Fórmula Matemática Integrada")
+                        st.code(formula_results['formula_description'], language='text')
+                        
+                        # Top predicciones
+                        st.subheader("🏆 Top Predicciones de la Fórmula")
+                        
+                        if formula_results['top_predictions']:
+                            top_nums = formula_results['top_predictions'][:10]
+                            
+                            # Cards de predicciones
+                            cols = st.columns(5)
+                            for i, (num, data) in enumerate(top_nums):
+                                with cols[i % 5]:
+                                    st.metric(
+                                        label=f"#{i+1}",
+                                        value=str(num),
+                                        delta=f"{data['total_score']:.1f} pts",
+                                        help=f"Clasificación: {data['classification']}"
+                                    )
+                            
+                            # Tabla detallada
+                            detailed_predictions = []
+                            for num, data in top_nums:
+                                detailed_predictions.append({
+                                    'Número': num,
+                                    'Puntuación Total': f"{data['total_score']:.1f}",
+                                    'Clasificación': data['classification'],
+                                    'Factores Principales': " | ".join(data['confidence_factors'][:2])
+                                })
+                            
+                            df_predictions = pd.DataFrame(detailed_predictions)
+                            st.dataframe(df_predictions, width='stretch')
+                        
+                        # Estadísticas del modelo
+                        st.subheader("📊 Estadísticas del Modelo")
+                        model_stats = formula_results['model_statistics']
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric("Números Evaluados", model_stats['total_numbers_evaluated'])
+                        
+                        with col2:
+                            st.metric("Autocorrelación", model_stats['autocorrelation_detected'])
+                        
+                        with col3:
+                            st.metric("Calidad Aleatoriedad", model_stats['randomness_quality'])
+                        
+                        with col4:
+                            st.metric("Tendencia Serie Temporal", model_stats['time_series_trend'])
+                        
+                        # Gráfico de puntuaciones
+                        if formula_results['top_predictions']:
+                            chart_data = []
+                            for num, data in formula_results['top_predictions'][:15]:
+                                chart_data.append({
+                                    'Número': num,
+                                    'Puntuación': data['total_score']
+                                })
+                            
+                            df_chart = pd.DataFrame(chart_data)
+                            fig = px.bar(
+                                df_chart,
+                                x='Número',
+                                y='Puntuación',
+                                title="Puntuaciones de la Fórmula Predictiva Integrada",
+                                color='Puntuación',
+                                color_continuous_scale='plasma'
+                            )
+                            st.plotly_chart(fig, width='stretch')
+                    
+                    else:
+                        st.error("No se pudo generar la fórmula predictiva.")
+            
+            elif analysis_type == "Autocorrelación":
+                with st.spinner("Analizando autocorrelación..."):
+                    autocorr_results = analyzer.analyze_autocorrelation(days=complex_analysis_days)
+                    
+                    if autocorr_results:
+                        st.subheader("📈 Análisis de Autocorrelación")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.metric("Test Durbin-Watson", f"{autocorr_results['durbin_watson_stat']:.3f}")
+                            st.metric("Test Ljung-Box (p-valor)", f"{autocorr_results['ljung_box_p_value']:.4f}")
+                            st.metric("Evaluación", autocorr_results['randomness_assessment'])
+                        
+                        with col2:
+                            if autocorr_results['autocorrelation_lags']:
+                                lag_data = []
+                                for lag_info in autocorr_results['autocorrelation_lags']:
+                                    lag_data.append({
+                                        'Lag': lag_info['lag'],
+                                        'Correlación': lag_info['correlation']
+                                    })
+                                
+                                df_lags = pd.DataFrame(lag_data)
+                                fig = px.bar(
+                                    df_lags,
+                                    x='Lag',
+                                    y='Correlación',
+                                    title="Función de Autocorrelación (ACF)"
+                                )
+                                st.plotly_chart(fig, width='stretch')
+                        
+                        if autocorr_results['significant_lags']:
+                            st.info(f"Lags significativos detectados: {', '.join(map(str, autocorr_results['significant_lags']))}")
+                    
+                    else:
+                        st.warning("No se pudo realizar el análisis de autocorrelación.")
+            
+            elif analysis_type == "Series Temporales":
+                with st.spinner("Analizando series temporales..."):
+                    ts_results = analyzer.analyze_time_series_patterns(days=complex_analysis_days)
+                    
+                    if ts_results:
+                        st.subheader("📊 Análisis de Series Temporales")
+                        
+                        # Análisis ARIMA
+                        if 'arima_analysis' in ts_results and 'error' not in ts_results['arima_analysis']:
+                            st.subheader("🔮 Modelo ARIMA")
+                            arima = ts_results['arima_analysis']
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("AIC del Modelo", f"{arima.get('aic', 0):.2f}")
+                            
+                            with col2:
+                                if 'forecast_next_7_days' in arima:
+                                    forecast_avg = np.mean(arima['forecast_next_7_days'])
+                                    st.metric("Promedio Predicción 7 días", f"{forecast_avg:.1f}")
+                        
+                        # Detección de ciclos
+                        if ts_results['cycle_detection']:
+                            st.subheader("🔄 Ciclos Detectados")
+                            cycles_data = []
+                            for cycle in ts_results['cycle_detection']:
+                                cycles_data.append({
+                                    'Período (días)': f"{cycle['period_days']:.1f}",
+                                    'Fuerza': f"{cycle['strength']:.2f}"
+                                })
+                            
+                            df_cycles = pd.DataFrame(cycles_data)
+                            st.dataframe(df_cycles, width='stretch')
+                        
+                        # Análisis de tendencias
+                        if ts_results['trend_analysis']:
+                            st.subheader("📈 Análisis de Tendencias")
+                            trend = ts_results['trend_analysis']
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Dirección", trend['trend_direction'])
+                            with col2:
+                                st.metric("Fuerza", trend['trend_strength'])
+                            with col3:
+                                st.metric("R²", f"{trend['r_squared']:.3f}")
+                    
+                    else:
+                        st.warning("No se pudo realizar el análisis de series temporales.")
+            
+            elif analysis_type == "Clustering":
+                with st.spinner("Ejecutando análisis de clustering..."):
+                    cluster_results = analyzer.analyze_number_clustering(days=complex_analysis_days)
+                    
+                    if cluster_results:
+                        st.subheader("🎯 Análisis de Clustering K-means")
+                        
+                        st.metric("Número Óptimo de Clusters", cluster_results['best_k_clusters'])
+                        
+                        # Mostrar clusters
+                        for cluster_id, cluster_info in cluster_results['cluster_analysis'].items():
+                            with st.expander(f"Cluster {cluster_id}: {cluster_info['type']} ({cluster_info['size']} números)"):
+                                st.write(f"**Frecuencia Promedio:** {cluster_info['avg_frequency']:.4f}")
+                                st.write(f"**Números:** {', '.join(map(str, cluster_info['numbers']))}")
+                        
+                        # Visualización de clusters
+                        cluster_viz_data = []
+                        for cluster_id, cluster_info in cluster_results['cluster_analysis'].items():
+                            for num in cluster_info['numbers']:
+                                cluster_viz_data.append({
+                                    'Número': num,
+                                    'Cluster': f"Cluster {cluster_id}",
+                                    'Tipo': cluster_info['type'],
+                                    'Frecuencia': cluster_info['avg_frequency']
+                                })
+                        
+                        df_clusters = pd.DataFrame(cluster_viz_data)
+                        fig = px.scatter(
+                            df_clusters,
+                            x='Número',
+                            y='Frecuencia',
+                            color='Tipo',
+                            title="Distribución de Números por Clusters",
+                            hover_data=['Cluster']
+                        )
+                        st.plotly_chart(fig, width='stretch')
+                    
+                    else:
+                        st.warning("No se pudo realizar el análisis de clustering.")
+            
+            elif analysis_type == "Tests de Aleatoriedad":
+                with st.spinner("Ejecutando tests de aleatoriedad..."):
+                    randomness_results = analyzer.test_randomness_quality(days=complex_analysis_days)
+                    
+                    if randomness_results:
+                        st.subheader("🎲 Tests de Calidad de Aleatoriedad")
+                        
+                        # Métricas principales
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric("Puntuación Aleatoriedad", f"{randomness_results['randomness_score']}/100")
+                        
+                        with col2:
+                            st.metric("Evaluación General", randomness_results['quality_assessment'])
+                        
+                        with col3:
+                            st.metric("Chi-cuadrado (p)", f"{randomness_results['chi_square']['p_value']:.4f}")
+                        
+                        with col4:
+                            st.metric("Kolmogorov-Smirnov (p)", f"{randomness_results['kolmogorov_smirnov']['p_value']:.4f}")
+                        
+                        # Detalles de tests
+                        st.subheader("📋 Detalles de Tests Estadísticos")
+                        
+                        test_details = [
+                            {
+                                'Test': 'Chi-cuadrado',
+                                'Estadística': f"{randomness_results['chi_square']['statistic']:.2f}",
+                                'P-valor': f"{randomness_results['chi_square']['p_value']:.4f}",
+                                'Interpretación': 'Aleatorio' if randomness_results['chi_square']['p_value'] > 0.05 else 'No Aleatorio'
+                            },
+                            {
+                                'Test': 'Kolmogorov-Smirnov',
+                                'Estadística': f"{randomness_results['kolmogorov_smirnov']['statistic']:.4f}",
+                                'P-valor': f"{randomness_results['kolmogorov_smirnov']['p_value']:.4f}",
+                                'Interpretación': 'Aleatorio' if randomness_results['kolmogorov_smirnov']['p_value'] > 0.05 else 'No Aleatorio'
+                            },
+                            {
+                                'Test': 'Runs Test',
+                                'Estadística': f"{randomness_results['runs_test']['n_runs']}",
+                                'P-valor': f"{randomness_results['runs_test']['p_value']:.4f}",
+                                'Interpretación': 'Aleatorio' if randomness_results['runs_test']['p_value'] > 0.05 else 'No Aleatorio'
+                            }
+                        ]
+                        
+                        df_tests = pd.DataFrame(test_details)
+                        st.dataframe(df_tests, width='stretch')
+                        
+                        # Estadísticas de secuencia
+                        st.subheader("📊 Estadísticas de la Secuencia")
+                        seq_stats = randomness_results['sequence_stats']
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Media", f"{seq_stats['mean']:.2f}")
+                        with col2:
+                            st.metric("Desviación Estándar", f"{seq_stats['std']:.2f}")
+                        with col3:
+                            st.metric("Mediana", f"{seq_stats['median']:.2f}")
+                    
+                    else:
+                        st.warning("No se pudieron ejecutar los tests de aleatoriedad.")
+        
+        # Panel informativo
+        with st.expander("ℹ️ Información sobre Análisis Estadísticos Complejos"):
+            st.write("""
+            **Análisis Implementados:**
+            
+            🔹 **Autocorrelación**: Detecta patrones no aleatorios usando tests Durbin-Watson y Ljung-Box
+            
+            🔹 **Series Temporales**: Modelo ARIMA para pronósticos, detección de ciclos con FFT, análisis de tendencias
+            
+            🔹 **Clustering**: Agrupación K-means de números basada en frecuencia y co-ocurrencia
+            
+            🔹 **Tests de Aleatoriedad**: Chi-cuadrado, Kolmogorov-Smirnov, y Runs test para evaluar calidad aleatoria
+            
+            🔹 **Fórmula Predictiva**: Integra todos los análisis en un sistema de puntuación unificado
+            
+            **Fundamento Científico:**
+            - Basado en literatura académica de análisis estadístico para series temporales
+            - Utiliza métodos establecidos en econometría y análisis de datos financieros
+            - Implementa tests estándar de aleatoriedad y autocorrelación
+            
+            **Limitaciones:**
+            - Los sorteos de lotería están diseñados para ser aleatorios
+            - Ningún análisis puede garantizar predicciones exactas
+            - Los resultados son para fines educativos y de investigación
+            """)
+    
+    else:
+        st.warning("⚠️ Se requieren datos históricos para ejecutar análisis estadísticos complejos.")
 
 # Footer
 st.markdown("---")

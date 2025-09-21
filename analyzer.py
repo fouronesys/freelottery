@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 import statistics
 from database import DatabaseManager
 import calendar
+from scipy import stats
 
 class StatisticalAnalyzer:
     """Realiza análisis estadísticos de los datos de lotería"""
@@ -741,3 +742,529 @@ class StatisticalAnalyzer:
         except Exception as e:
             print(f"Error encontrando patrones de combinación: {e}")
             return []
+
+    # ================== ANÁLISIS ESTADÍSTICOS COMPLEJOS ==================
+    
+    def analyze_autocorrelation(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Análisis de autocorrelación mejorado usando series temporales agregadas
+        Detecta patrones no aleatorios de forma estadísticamente válida
+        """
+        try:
+            from scipy import stats
+            from statsmodels.stats.diagnostic import acorr_ljungbox
+            from statsmodels.tsa.stattools import durbin_watson
+            from statsmodels.tsa.stattools import acf, pacf
+            
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            # Obtener datos y crear serie temporal agregada por día
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            if not draws_data:
+                return {}
+            
+            # Agrupar por día y calcular estadísticas diarias
+            daily_stats = defaultdict(list)
+            for date_str, number in draws_data:
+                daily_stats[date_str].append(number)
+            
+            # Crear serie temporal de promedios diarios (más estable estadísticamente)
+            daily_series = []
+            dates = sorted(daily_stats.keys())
+            
+            for date_str in dates:
+                if daily_stats[date_str]:
+                    daily_avg = np.mean(daily_stats[date_str])
+                    daily_series.append(daily_avg)
+            
+            if len(daily_series) < 15:
+                return {'error': 'Serie temporal muy corta para análisis válido'}
+            
+            # Convertir a array numpy
+            time_series = np.array(daily_series)
+            
+            # Test de estacionariedad simple (diferencias)
+            diff_series = np.diff(time_series)
+            
+            # 1. Test Durbin-Watson en las diferencias (más apropiado)
+            dw_stat = durbin_watson(diff_series)
+            
+            # 2. Análisis ACF/PACF usando statsmodels (método correcto)
+            try:
+                acf_values = acf(diff_series, nlags=min(10, len(diff_series)//4), fft=False)
+                pacf_values = pacf(diff_series, nlags=min(10, len(diff_series)//4))
+                
+                autocorr_lags = []
+                for i in range(1, len(acf_values)):
+                    autocorr_lags.append({
+                        'lag': i,
+                        'acf': float(acf_values[i]),
+                        'pacf': float(pacf_values[i]) if i < len(pacf_values) else 0
+                    })
+            except:
+                autocorr_lags = []
+            
+            # 3. Test Ljung-Box en diferencias
+            try:
+                ljung_result = acorr_ljungbox(diff_series, lags=min(10, len(diff_series)//3), return_df=True)
+                ljung_p = float(ljung_result.iloc[0]['lb_pvalue'])
+            except:
+                ljung_p = 1.0
+            
+            # Interpretación mejorada
+            randomness_assessment = "Serie Aleatoria"
+            confidence_level = "Alta"
+            
+            if ljung_p < 0.05:
+                randomness_assessment = "Patrones Detectados (Serie No Aleatoria)"
+                confidence_level = "Alta"
+            elif ljung_p < 0.1:
+                randomness_assessment = "Posibles Patrones Débiles"
+                confidence_level = "Media"
+            
+            # Análisis de significancia estadística
+            significant_lags = []
+            for lag_info in autocorr_lags:
+                # Umbral aproximado para significancia en ACF
+                threshold = 1.96 / np.sqrt(len(time_series))
+                if abs(lag_info['acf']) > threshold:
+                    significant_lags.append(lag_info['lag'])
+            
+            return {
+                'series_length': len(time_series),
+                'durbin_watson_stat': float(dw_stat),
+                'ljung_box_p_value': ljung_p,
+                'autocorr_lags': autocorr_lags,
+                'randomness_assessment': randomness_assessment,
+                'confidence_level': confidence_level,
+                'significant_lags': significant_lags,
+                'methodology_note': 'Análisis realizado en diferencias de promedios diarios para mayor validez estadística'
+            }
+            
+        except Exception as e:
+            print(f"Error en análisis de autocorrelación: {e}")
+            return {'error': str(e)}
+    
+    def analyze_time_series_patterns(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Análisis de series temporales usando ARIMA y detección de estacionalidad
+        """
+        try:
+            from statsmodels.tsa.arima.model import ARIMA
+            from statsmodels.tsa.seasonal import seasonal_decompose
+            from scipy.fft import fft, fftfreq
+            
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            if not draws_data:
+                return {}
+            
+            # Crear serie temporal de frecuencias diarias
+            daily_stats = defaultdict(list)
+            for date_str, number in draws_data:
+                daily_stats[date_str].append(number)
+            
+            # Promedio diario de números
+            daily_averages = []
+            dates = []
+            for date_str in sorted(daily_stats.keys()):
+                if daily_stats[date_str]:
+                    daily_averages.append(np.mean(daily_stats[date_str]))
+                    dates.append(date_str)
+            
+            if len(daily_averages) < 15:
+                return {}
+            
+            # 1. Análisis ARIMA simple
+            try:
+                model = ARIMA(daily_averages, order=(1,1,1))
+                fitted_model = model.fit()
+                forecast = fitted_model.forecast(steps=7)
+                arima_summary = {
+                    'aic': float(fitted_model.aic),
+                    'forecast_next_7_days': [float(x) for x in forecast],
+                    'model_params': fitted_model.params.to_dict()
+                }
+            except:
+                arima_summary = {'error': 'No se pudo ajustar modelo ARIMA'}
+            
+            # 2. Análisis de frecuencias (FFT para detectar ciclos)
+            if len(daily_averages) >= 20:
+                fft_values = fft(daily_averages)
+                frequencies = fftfreq(len(daily_averages))
+                
+                # Encontrar frecuencias dominantes
+                magnitude = np.abs(fft_values)
+                dominant_freqs = []
+                for i in range(1, len(magnitude)//2):
+                    if magnitude[i] > np.mean(magnitude) + 2*np.std(magnitude):
+                        period = 1/abs(frequencies[i]) if frequencies[i] != 0 else 0
+                        if period > 2:  # Ciclos de más de 2 días
+                            dominant_freqs.append({
+                                'period_days': float(period),
+                                'strength': float(magnitude[i])
+                            })
+                
+                cycle_analysis = sorted(dominant_freqs, key=lambda x: x['strength'], reverse=True)[:5]
+            else:
+                cycle_analysis = []
+            
+            # 3. Detección de tendencias
+            if len(daily_averages) >= 10:
+                x = np.arange(len(daily_averages))
+                slope, intercept, r_value, p_value, std_err = stats.linregress(x, daily_averages)
+                
+                trend_analysis = {
+                    'slope': float(slope),
+                    'r_squared': float(r_value**2),
+                    'p_value': float(p_value),
+                    'trend_direction': 'Creciente' if slope > 0 else 'Decreciente',
+                    'trend_strength': 'Fuerte' if abs(r_value) > 0.5 else 'Débil'
+                }
+            else:
+                trend_analysis = {}
+            
+            return {
+                'arima_analysis': arima_summary,
+                'cycle_detection': cycle_analysis,
+                'trend_analysis': trend_analysis,
+                'data_points': len(daily_averages),
+                'date_range': {'start': dates[0], 'end': dates[-1]}
+            }
+            
+        except Exception as e:
+            print(f"Error en análisis de series temporales: {e}")
+            return {}
+    
+    def test_randomness_quality(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Tests estadísticos de calidad de aleatoriedad
+        Chi-square test, runs test, y análisis de distribución
+        """
+        try:
+            from scipy.stats import chisquare, kstest, shapiro
+            from scipy import stats
+            
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            if not draws_data:
+                return {}
+            
+            numbers_sequence = [number for _, number in draws_data]
+            
+            if len(numbers_sequence) < 30:
+                return {}
+            
+            # 1. Chi-square test para uniformidad
+            observed_freq = Counter(numbers_sequence)
+            all_numbers = list(range(self.number_range[0], self.number_range[1] + 1))
+            observed_counts = [observed_freq.get(num, 0) for num in all_numbers]
+            
+            expected_count = len(numbers_sequence) / len(all_numbers)
+            expected_counts = [expected_count] * len(all_numbers)
+            
+            chi2_stat, chi2_p = chisquare(observed_counts, expected_counts)
+            
+            # 2. Kolmogorov-Smirnov test para distribución uniforme
+            ks_stat, ks_p = kstest(numbers_sequence, 'uniform', 
+                                   args=(self.number_range[0], self.number_range[1] - self.number_range[0] + 1))
+            
+            # 3. Runs test (test de rachas)
+            median_val = np.median(numbers_sequence)
+            runs = []
+            current_run = []
+            
+            for num in numbers_sequence:
+                if not current_run:
+                    current_run = [num >= median_val]
+                elif (num >= median_val) == current_run[-1]:
+                    current_run.append(num >= median_val)
+                else:
+                    runs.append(len(current_run))
+                    current_run = [num >= median_val]
+            
+            if current_run:
+                runs.append(len(current_run))
+            
+            # Estadísticas de runs
+            n_runs = len(runs)
+            n_total = len(numbers_sequence)
+            n_positive = sum(1 for x in numbers_sequence if x >= median_val)
+            n_negative = n_total - n_positive
+            
+            if n_positive > 0 and n_negative > 0:
+                expected_runs = (2 * n_positive * n_negative) / n_total + 1
+                variance_runs = (2 * n_positive * n_negative * (2 * n_positive * n_negative - n_total)) / (n_total**2 * (n_total - 1))
+                
+                if variance_runs > 0:
+                    z_runs = (n_runs - expected_runs) / np.sqrt(variance_runs)
+                    runs_p = 2 * (1 - stats.norm.cdf(abs(z_runs)))
+                else:
+                    z_runs, runs_p = 0, 1
+            else:
+                z_runs, runs_p = 0, 1
+            
+            # 4. Análisis de gaps (intervalos entre apariciones)
+            number_gaps = defaultdict(list)
+            last_positions = {}
+            
+            for i, num in enumerate(numbers_sequence):
+                if num in last_positions:
+                    gap = i - last_positions[num]
+                    number_gaps[num].append(gap)
+                last_positions[num] = i
+            
+            avg_gaps = {}
+            for num, gaps in number_gaps.items():
+                if gaps:
+                    avg_gaps[num] = np.mean(gaps)
+            
+            # Evaluación general de aleatoriedad
+            randomness_score = 0
+            if chi2_p > 0.05: randomness_score += 25
+            if ks_p > 0.05: randomness_score += 25  
+            if runs_p > 0.05: randomness_score += 25
+            if 0.4 < len(set(numbers_sequence))/len(all_numbers) < 0.8: randomness_score += 25
+            
+            quality_assessment = "Excelente" if randomness_score >= 75 else \
+                               "Buena" if randomness_score >= 50 else \
+                               "Regular" if randomness_score >= 25 else "Pobre"
+            
+            return {
+                'chi_square': {'statistic': float(chi2_stat), 'p_value': float(chi2_p)},
+                'kolmogorov_smirnov': {'statistic': float(ks_stat), 'p_value': float(ks_p)},
+                'runs_test': {'n_runs': n_runs, 'expected_runs': float(expected_runs), 'p_value': float(runs_p)},
+                'randomness_score': randomness_score,
+                'quality_assessment': quality_assessment,
+                'unique_numbers_ratio': len(set(numbers_sequence))/len(all_numbers),
+                'sequence_stats': {
+                    'mean': float(np.mean(numbers_sequence)),
+                    'std': float(np.std(numbers_sequence)),
+                    'median': float(np.median(numbers_sequence))
+                }
+            }
+            
+        except Exception as e:
+            print(f"Error en test de aleatoriedad: {e}")
+            return {}
+    
+    def analyze_number_clustering(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Análisis de clustering para detectar grupos de números relacionados
+        """
+        try:
+            from sklearn.cluster import KMeans
+            from sklearn.preprocessing import StandardScaler
+            
+            # Obtener datos de frecuencia y co-ocurrencia
+            frequency_data = self.calculate_all_frequencies(days)
+            cooccurrence_data = self.analyze_number_cooccurrence(days)
+            
+            if not frequency_data or not cooccurrence_data:
+                return {}
+            
+            # Preparar matriz de características
+            features = []
+            numbers = []
+            
+            for num, freq, rel_freq, classification in frequency_data:
+                # Características: frecuencia relativa, número de co-ocurrencias, promedio de co-ocurrencias
+                cooc_count = len(cooccurrence_data.get(num, {}))
+                cooc_avg = np.mean(list(cooccurrence_data.get(num, {0: 0}).values())) if cooc_count > 0 else 0
+                
+                features.append([rel_freq, cooc_count, cooc_avg, num])
+                numbers.append(num)
+            
+            if len(features) < 6:  # Necesitamos al menos 6 números para clustering
+                return {}
+            
+            # Normalizar características
+            scaler = StandardScaler()
+            features_scaled = scaler.fit_transform(features)
+            
+            # K-means clustering con diferentes números de clusters
+            cluster_results = {}
+            
+            for n_clusters in [3, 4, 5, 6]:
+                if len(features) >= n_clusters:
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                    cluster_labels = kmeans.fit_predict(features_scaled)
+                    
+                    # Organizar clusters
+                    clusters = defaultdict(list)
+                    for i, label in enumerate(cluster_labels):
+                        clusters[label].append({
+                            'number': numbers[i],
+                            'frequency': features[i][0],
+                            'cooccurrence_count': features[i][1]
+                        })
+                    
+                    # Evaluar calidad del clustering
+                    inertia = kmeans.inertia_
+                    cluster_results[n_clusters] = {
+                        'clusters': dict(clusters),
+                        'inertia': float(inertia),
+                        'centroids': kmeans.cluster_centers_.tolist()
+                    }
+            
+            # Seleccionar mejor número de clusters (método del codo simplificado)
+            if cluster_results:
+                inertias = [(k, v['inertia']) for k, v in cluster_results.items()]
+                best_k = min(inertias, key=lambda x: x[1])[0]
+                
+                # Interpretar clusters del mejor modelo
+                best_clusters = cluster_results[best_k]['clusters']
+                cluster_interpretations = {}
+                
+                for cluster_id, cluster_nums in best_clusters.items():
+                    avg_freq = np.mean([n['frequency'] for n in cluster_nums])
+                    cluster_size = len(cluster_nums)
+                    
+                    if avg_freq > 0.02:
+                        cluster_type = "Números Calientes"
+                    elif avg_freq < 0.005:
+                        cluster_type = "Números Fríos"
+                    else:
+                        cluster_type = "Números Normales"
+                    
+                    cluster_interpretations[cluster_id] = {
+                        'type': cluster_type,
+                        'size': cluster_size,
+                        'avg_frequency': float(avg_freq),
+                        'numbers': [n['number'] for n in cluster_nums]
+                    }
+                
+                return {
+                    'best_k_clusters': best_k,
+                    'cluster_analysis': cluster_interpretations,
+                    'all_k_results': cluster_results,
+                    'total_numbers_analyzed': len(numbers)
+                }
+            
+            return {}
+            
+        except Exception as e:
+            print(f"Error en análisis de clustering: {e}")
+            return {}
+    
+    def create_predictive_formula(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Crea fórmulas predictivas basadas en todos los análisis estadísticos complejos
+        """
+        try:
+            # Ejecutar todos los análisis complejos
+            autocorr_results = self.analyze_autocorrelation(days)
+            timeseries_results = self.analyze_time_series_patterns(days)
+            randomness_results = self.test_randomness_quality(days)
+            clustering_results = self.analyze_number_clustering(days)
+            
+            # Obtener datos base
+            frequency_data = self.calculate_all_frequencies(days)
+            ewma_trends = self.calculate_ewma_trends(days)
+            
+            if not frequency_data:
+                return {}
+            
+            # Crear sistema de puntuación integrado
+            formula_scores = {}
+            
+            for num, freq, rel_freq, classification in frequency_data:
+                score = 0
+                confidence_factors = []
+                
+                # 1. Factor de frecuencia base (peso: 30%)
+                freq_score = rel_freq * 30
+                score += freq_score
+                confidence_factors.append(f"Frecuencia: {rel_freq:.3f}")
+                
+                # 2. Factor de tendencia EWMA (peso: 25%)
+                if ewma_trends and num in ewma_trends:
+                    ewma_score = min(ewma_trends[num] * 25, 25)  # Cap at 25
+                    score += ewma_score
+                    confidence_factors.append(f"Tendencia EWMA: {ewma_trends[num]:.3f}")
+                
+                # 3. Factor de clustering (peso: 20%)
+                if clustering_results and 'cluster_analysis' in clustering_results:
+                    for cluster_id, cluster_info in clustering_results['cluster_analysis'].items():
+                        if num in cluster_info['numbers']:
+                            if cluster_info['type'] == "Números Calientes":
+                                cluster_score = 20
+                            elif cluster_info['type'] == "Números Normales":
+                                cluster_score = 10
+                            else:  # Números Fríos
+                                cluster_score = 5
+                            score += cluster_score
+                            confidence_factors.append(f"Cluster: {cluster_info['type']}")
+                            break
+                
+                # 4. Factor de autocorrelación (peso: 15%)
+                if autocorr_results and 'significant_lags' in autocorr_results:
+                    if autocorr_results['randomness_assessment'] != "Aleatorio":
+                        autocorr_score = 15 * (1 - autocorr_results['durbin_watson_stat']/4)
+                        score += max(0, autocorr_score)
+                        confidence_factors.append("Patrón no-aleatorio detectado")
+                
+                # 5. Factor de calidad de aleatoriedad (peso: 10%)
+                if randomness_results and 'randomness_score' in randomness_results:
+                    # Paradójicamente, menor aleatoriedad = mayor predictibilidad
+                    randomness_score = (100 - randomness_results['randomness_score']) * 0.1
+                    score += randomness_score
+                    confidence_factors.append(f"Predictibilidad: {randomness_score:.1f}")
+                
+                formula_scores[num] = {
+                    'total_score': score,
+                    'confidence_factors': confidence_factors,
+                    'classification': classification
+                }
+            
+            # Ordenar por puntuación y crear recomendaciones
+            sorted_scores = sorted(formula_scores.items(), key=lambda x: x[1]['total_score'], reverse=True)
+            
+            # Crear fórmula matemática textual
+            formula_description = """
+            FÓRMULA PREDICTIVA INTEGRADA:
+            
+            Puntuación_Total = (Frecuencia_Relativa × 30) + 
+                             (Tendencia_EWMA × 25) + 
+                             (Factor_Clustering × 20) + 
+                             (Factor_Autocorrelación × 15) + 
+                             (Factor_Predictibilidad × 10)
+            
+            Donde:
+            - Frecuencia_Relativa: Probabilidad histórica de aparición
+            - Tendencia_EWMA: Promedio móvil exponencial (detecta tendencias recientes)
+            - Factor_Clustering: Tipo de cluster (Caliente=20, Normal=10, Frío=5)
+            - Factor_Autocorrelación: Basado en test Durbin-Watson
+            - Factor_Predictibilidad: Inverso de la calidad de aleatoriedad
+            """
+            
+            # Estadísticas del modelo
+            model_stats = {
+                'total_numbers_evaluated': len(formula_scores),
+                'autocorrelation_detected': autocorr_results.get('randomness_assessment', 'No disponible'),
+                'randomness_quality': randomness_results.get('quality_assessment', 'No disponible'),
+                'clustering_method': f"K-means con {clustering_results.get('best_k_clusters', 'N/A')} clusters",
+                'time_series_trend': timeseries_results.get('trend_analysis', {}).get('trend_direction', 'No disponible')
+            }
+            
+            return {
+                'formula_description': formula_description,
+                'top_predictions': sorted_scores[:15],
+                'model_statistics': model_stats,
+                'component_analyses': {
+                    'autocorrelation': autocorr_results,
+                    'time_series': timeseries_results,
+                    'randomness': randomness_results,
+                    'clustering': clustering_results
+                },
+                'formula_version': '1.0 - Análisis Estadístico Integrado'
+            }
+            
+        except Exception as e:
+            print(f"Error creando fórmula predictiva: {e}")
+            return {}
