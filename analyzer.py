@@ -35,9 +35,13 @@ class StatisticalAnalyzer:
         mean_freq = statistics.mean(frequencies)
         std_freq = statistics.stdev(frequencies) if len(frequencies) > 1 else 0
         
-        # Umbrales para clasificación
-        hot_threshold = mean_freq + (0.5 * std_freq)
-        cold_threshold = mean_freq - (0.5 * std_freq)
+        # Umbrales mejorados para clasificación usando percentiles
+        sorted_frequencies = sorted(frequencies)
+        n = len(sorted_frequencies)
+        
+        # Usar percentiles para umbrales más precisos
+        hot_threshold = sorted_frequencies[int(n * 0.75)] if n > 4 else mean_freq + (0.5 * std_freq)
+        cold_threshold = sorted_frequencies[int(n * 0.25)] if n > 4 else mean_freq - (0.5 * std_freq)
         
         results = []
         for number, abs_freq, rel_freq in frequency_data:
@@ -174,7 +178,7 @@ class StatisticalAnalyzer:
     
     def calculate_correlations(self, days: int = 180) -> List[Tuple[int, int, float, str]]:
         """
-        Calcula correlaciones entre números
+        Calcula correlaciones mejoradas entre números usando análisis estadístico avanzado
         
         Returns:
             List[Tuple]: [(num1, num2, correlacion, significancia), ...]
@@ -185,7 +189,7 @@ class StatisticalAnalyzer:
         
         draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
         
-        if len(draws_data) < 10:  # Necesitamos datos suficientes
+        if len(draws_data) < 20:  # Necesitamos datos suficientes para análisis robusto
             return []
         
         # Organizar datos por fecha
@@ -195,37 +199,70 @@ class StatisticalAnalyzer:
                 dates_numbers[date_str] = []
             dates_numbers[date_str].append(number)
         
-        # Calcular correlaciones simples (apariciones conjuntas)
         correlations = []
         unique_numbers = sorted(set(num for _, num in draws_data))
         
+        # Calcular estadísticas base para normalizar
+        total_dates = len(dates_numbers)
+        
         for i, num1 in enumerate(unique_numbers):
             for num2 in unique_numbers[i+1:]:
-                # Contar apariciones conjuntas
-                joint_appearances = 0
-                total_dates = len(dates_numbers)
+                # Contar apariciones individuales y conjuntas
+                num1_appearances = sum(1 for date_numbers in dates_numbers.values() if num1 in date_numbers)
+                num2_appearances = sum(1 for date_numbers in dates_numbers.values() if num2 in date_numbers)
+                joint_appearances = sum(1 for date_numbers in dates_numbers.values() 
+                                      if num1 in date_numbers and num2 in date_numbers)
                 
-                for date_numbers in dates_numbers.values():
-                    if num1 in date_numbers and num2 in date_numbers:
-                        joint_appearances += 1
+                # Calcular probabilidades
+                p_num1 = num1_appearances / total_dates
+                p_num2 = num2_appearances / total_dates
+                p_joint = joint_appearances / total_dates
                 
-                # Calcular correlación simple
-                correlation = joint_appearances / total_dates if total_dates > 0 else 0
+                # Probabilidad esperada bajo independencia
+                p_expected = p_num1 * p_num2
                 
-                # Determinar significancia
-                if correlation > 0.1:
-                    significance = "Alta"
-                elif correlation > 0.05:
-                    significance = "Media"
+                # Calcular correlación usando información mutua normalizada
+                if p_num1 > 0 and p_num2 > 0 and p_expected > 0:
+                    # Correlación normalizada (similar a coeficiente de Pearson para datos binarios)
+                    max_p = max(p_num1, p_num2)
+                    if max_p < 1.0:  # Evitar división por cero
+                        correlation = (p_joint - p_expected) / (max_p * (1 - max_p))
+                        correlation = max(-1.0, min(1.0, correlation))  # Limitar a [-1, 1]
+                    else:
+                        correlation = 0.0
                 else:
-                    significance = "Baja"
+                    correlation = 0.0
                 
-                correlations.append((num1, num2, correlation, significance))
+                # Calcular significancia estadística mejorada
+                # Usar test de chi-cuadrado simplificado
+                expected_joint = p_expected * total_dates
+                
+                if expected_joint > 5 and joint_appearances >= 5:  # Criterio para validez del test
+                    chi_square = ((joint_appearances - expected_joint) ** 2) / expected_joint
+                    
+                    if chi_square > 7.88:  # p < 0.005
+                        significance = "Muy Alta"
+                    elif chi_square > 3.84:  # p < 0.05
+                        significance = "Alta"
+                    elif chi_square > 2.71:  # p < 0.10
+                        significance = "Media"
+                    else:
+                        significance = "Baja"
+                else:
+                    # Para muestras pequeñas, usar criterio basado en frecuencia
+                    if joint_appearances >= max(3, total_dates * 0.05):
+                        significance = "Media"
+                    else:
+                        significance = "Baja"
+                
+                # Solo incluir correlaciones con cierta relevancia
+                if abs(correlation) > 0.01 or joint_appearances >= 3:
+                    correlations.append((num1, num2, correlation, significance))
         
-        # Ordenar por correlación descendente
-        correlations.sort(key=lambda x: x[2], reverse=True)
+        # Ordenar por valor absoluto de correlación descendente
+        correlations.sort(key=lambda x: abs(x[2]), reverse=True)
         
-        return correlations[:20]  # Top 20 correlaciones
+        return correlations[:25]  # Top 25 correlaciones más significativas
     
     def get_performance_statistics(self) -> Dict[str, Any]:
         """
@@ -306,7 +343,8 @@ class StatisticalAnalyzer:
     
     def get_prediction_confidence_score(self, number: int, days: int = 180) -> float:
         """
-        Calcula un puntaje de confianza para la predicción de un número
+        Calcula un puntaje de confianza mejorado para la predicción de un número
+        Implementa múltiples factores estadísticos para mayor precisión
         
         Returns:
             float: Puntaje de confianza entre 0 y 1
@@ -322,23 +360,44 @@ class StatisticalAnalyzer:
                 return 0.0
             
             frequencies = [freq for _, freq, _ in all_frequencies]
+            if len(frequencies) < 2:
+                return rel_freq
+            
             mean_freq = statistics.mean(frequencies)
+            std_freq = statistics.stdev(frequencies)
             max_freq = max(frequencies)
+            min_freq = min(frequencies)
             
-            # Calcular puntaje base en frecuencia relativa
-            base_score = rel_freq
+            # Factor 1: Z-score normalizado (qué tan alejado está del promedio)
+            z_score = (abs_freq - mean_freq) / std_freq if std_freq > 0 else 0
+            z_factor = 0.5 + (z_score / 6.0)  # Normalizar z-score típico (-3,3) a (0,1)
+            z_factor = max(0.0, min(1.0, z_factor))
             
-            # Ajustar por frecuencia en relación al promedio
-            if mean_freq > 0:
-                frequency_factor = abs_freq / mean_freq
-                frequency_factor = min(frequency_factor, 2.0)  # Limitar factor
+            # Factor 2: Posición relativa en el rango
+            if max_freq > min_freq:
+                range_factor = (abs_freq - min_freq) / (max_freq - min_freq)
             else:
-                frequency_factor = 0.0
+                range_factor = 0.5
             
-            # Calcular puntaje final (combinación de factores)
-            confidence_score = (base_score * 0.6) + (frequency_factor * 0.4 / 2.0)
+            # Factor 3: Consistencia histórica (usando análisis de tendencia)
+            consistency_factor = self._calculate_consistency_factor(number, days)
             
-            # Normalizar entre 0 y 1
+            # Factor 4: Frecuencia relativa suavizada
+            smoothed_rel_freq = rel_freq + 0.01 / (days / 180)  # Pequeño ajuste por período
+            
+            # Factor 5: Factor de regularidad (qué tan regular es la aparición)
+            regularity_factor = self._calculate_regularity_factor(number, days)
+            
+            # Combinar factores con pesos optimizados
+            confidence_score = (
+                smoothed_rel_freq * 0.25 +      # Frecuencia relativa
+                z_factor * 0.20 +               # Posición estadística
+                range_factor * 0.20 +           # Posición en rango
+                consistency_factor * 0.20 +     # Consistencia temporal
+                regularity_factor * 0.15        # Regularidad de aparición
+            )
+            
+            # Normalizar y aplicar límites
             confidence_score = min(max(confidence_score, 0.0), 1.0)
             
             return confidence_score
@@ -346,6 +405,82 @@ class StatisticalAnalyzer:
         except Exception as e:
             print(f"Error calculando confianza para número {number}: {e}")
             return 0.0
+    
+    def _calculate_consistency_factor(self, number: int, days: int) -> float:
+        """
+        Calcula qué tan consistente ha sido la frecuencia del número a lo largo del tiempo
+        """
+        try:
+            # Dividir el período en cuartos para analizar consistencia
+            quarter_days = days // 4
+            quarter_frequencies = []
+            
+            for i in range(4):
+                start_days = (3 - i) * quarter_days
+                end_days = (4 - i) * quarter_days if i < 3 else days
+                
+                if start_days < days:
+                    _, rel_freq = self.db.get_number_frequency(number, end_days - start_days)
+                    quarter_frequencies.append(rel_freq)
+            
+            if len(quarter_frequencies) < 2:
+                return 0.5
+            
+            # Calcular coeficiente de variación (menor variación = mayor consistencia)
+            mean_freq = statistics.mean(quarter_frequencies)
+            if mean_freq == 0:
+                return 0.0
+            
+            std_freq = statistics.stdev(quarter_frequencies)
+            cv = std_freq / mean_freq  # Coeficiente de variación
+            
+            # Convertir a factor de consistencia (menor CV = mayor consistencia)
+            consistency = max(0.0, 1.0 - min(cv, 2.0) / 2.0)
+            
+            return consistency
+            
+        except Exception:
+            return 0.5
+    
+    def _calculate_regularity_factor(self, number: int, days: int) -> float:
+        """
+        Calcula qué tan regular es la aparición del número (espaciado entre apariciones)
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            # Obtener todas las fechas donde apareció el número
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            number_dates = [datetime.strptime(date_str, '%Y-%m-%d') 
+                          for date_str, num in draws_data if num == number]
+            
+            if len(number_dates) < 2:
+                return 0.3  # Valor neutral para números con pocas apariciones
+            
+            # Calcular intervalos entre apariciones
+            number_dates.sort()
+            intervals = [(number_dates[i+1] - number_dates[i]).days 
+                        for i in range(len(number_dates) - 1)]
+            
+            if not intervals:
+                return 0.3
+            
+            # Analizar regularidad de intervalos
+            mean_interval = statistics.mean(intervals)
+            if len(intervals) > 1:
+                std_interval = statistics.stdev(intervals)
+                cv_interval = std_interval / mean_interval if mean_interval > 0 else 2.0
+            else:
+                cv_interval = 0.0
+            
+            # Convertir a factor de regularidad
+            regularity = max(0.0, 1.0 - min(cv_interval, 3.0) / 3.0)
+            
+            return regularity
+            
+        except Exception:
+            return 0.3
     
     def analyze_day_of_week_patterns(self, days: int = 180) -> Dict[str, Any]:
         """

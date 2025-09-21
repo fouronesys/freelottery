@@ -13,12 +13,12 @@ class LotteryPredictor:
         self.analyzer = analyzer
         self.number_range = (0, 99)
         
-        # Pesos para diferentes métodos de predicción
+        # Pesos optimizados para diferentes métodos de predicción
         self.method_weights = {
-            'frequency': 0.4,      # Peso de la frecuencia histórica
-            'trend': 0.3,          # Peso de la tendencia reciente
-            'pattern': 0.2,        # Peso de patrones detectados
-            'randomness': 0.1      # Factor de aleatoriedad
+            'frequency': 0.35,     # Peso de la frecuencia histórica
+            'trend': 0.35,         # Peso de la tendencia reciente (aumentado)
+            'pattern': 0.25,       # Peso de patrones detectados (aumentado)
+            'randomness': 0.05     # Factor de aleatoriedad (reducido)
         }
     
     def generate_predictions(
@@ -112,51 +112,126 @@ class LotteryPredictor:
         return predictions[:num_predictions * 2]  # Retornar más para filtrado posterior
     
     def _predict_by_recent_trend(self, days: int, num_predictions: int) -> List[Tuple[int, float, float, str]]:
-        """Predicción basada en tendencia reciente"""
+        """Predicción mejorada basada en tendencia reciente con análisis de momentum"""
         predictions = []
         
-        # Analizar tendencia reciente (últimos 30 días vs. período anterior)
-        recent_days = min(30, days // 2)
-        previous_days = days - recent_days
+        # Análisis de tendencia múltiple con diferentes ventanas de tiempo
+        windows = [
+            (min(15, days // 4), "muy reciente"),
+            (min(30, days // 2), "reciente"),
+            (min(60, days * 3 // 4), "medio plazo")
+        ]
         
-        recent_freq = self.analyzer.db.get_all_numbers_frequency(recent_days)
-        previous_freq = self.analyzer.db.get_all_numbers_frequency(previous_days)
+        # Obtener frecuencias para cada ventana
+        window_data = {}
+        for window_days, window_name in windows:
+            if window_days > 0:
+                window_data[window_name] = {
+                    'frequencies': self.analyzer.db.get_all_numbers_frequency(window_days),
+                    'days': window_days
+                }
         
-        # Crear diccionarios para comparación
-        recent_dict = {num: (abs_freq, rel_freq) for num, abs_freq, rel_freq in recent_freq}
-        previous_dict = {num: (abs_freq, rel_freq) for num, abs_freq, rel_freq in previous_freq}
+        # Análisis de referencia (todo el período)
+        baseline_freq = self.analyzer.db.get_all_numbers_frequency(days)
+        baseline_dict = {num: (abs_freq, rel_freq) for num, abs_freq, rel_freq in baseline_freq}
+        
+        # Crear diccionarios para cada ventana
+        window_dicts = {}
+        for window_name, data in window_data.items():
+            window_dicts[window_name] = {num: (abs_freq, rel_freq) 
+                                       for num, abs_freq, rel_freq in data['frequencies']}
         
         # Obtener todos los números únicos
-        all_numbers = set(recent_dict.keys()) | set(previous_dict.keys())
+        all_numbers = set(baseline_dict.keys())
+        for window_dict in window_dicts.values():
+            all_numbers.update(window_dict.keys())
         
         for number in all_numbers:
-            recent_abs, recent_rel = recent_dict.get(number, (0, 0.0))
-            previous_abs, previous_rel = previous_dict.get(number, (0, 0.0))
+            baseline_abs, baseline_rel = baseline_dict.get(number, (0, 0.0))
             
-            # Calcular tendencia
-            if previous_rel > 0:
-                trend_factor = (recent_rel - previous_rel) / previous_rel
-            else:
-                trend_factor = 1.0 if recent_rel > 0 else 0.0
+            # Calcular momentum y aceleración de tendencia con protección para muestras pequeñas
+            momentum_score = 0.0
+            acceleration_score = 0.0
+            trend_consistency = 0.5  # Valor neutral por defecto
             
-            # Puntuación basada en tendencia positiva
-            score = (recent_rel * 50) + (trend_factor * 25)
+            # Verificar que tenemos suficientes datos para análisis robusto
+            total_sample_size = sum(data.get('days', 0) for data in window_data.values())
+            
+            if len(window_dicts) >= 2 and total_sample_size >= 30:  # Mínimo 30 días de datos
+                # Calcular velocidad de cambio entre ventanas
+                window_values = []
+                window_sample_sizes = []
+                
+                for window_name in ['muy reciente', 'reciente', 'medio plazo']:
+                    if window_name in window_dicts and window_name in window_data:
+                        _, rel_freq = window_dicts[window_name].get(number, (0, 0.0))
+                        sample_size = window_data[window_name]['days']
+                        
+                        # Suavizar frecuencias relativas para muestras pequeñas
+                        if sample_size < 15:  # Ventana muy pequeña
+                            # Aplicar suavizado Laplace
+                            smoothed_freq = (rel_freq * sample_size + 0.01) / (sample_size + 0.02)
+                            window_values.append(smoothed_freq)
+                        else:
+                            window_values.append(rel_freq)
+                        window_sample_sizes.append(sample_size)
+                
+                if len(window_values) >= 2 and min(window_sample_sizes) >= 5:
+                    # Momentum (tendencia lineal) con peso por tamaño de muestra
+                    weights = [min(size / 15.0, 1.0) for size in window_sample_sizes]
+                    
+                    if len(window_values) > 1:
+                        weighted_change = (window_values[0] - window_values[-1]) * weights[0] * weights[-1]
+                        momentum_score = max(-0.1, min(0.1, weighted_change))  # Limitar momentum
+                    
+                    # Aceleración (cambio en la tendencia) solo con suficientes datos
+                    if len(window_values) >= 3 and min(window_sample_sizes) >= 10:
+                        recent_change = window_values[0] - window_values[1]
+                        older_change = window_values[1] - window_values[2]
+                        acceleration_score = (recent_change - older_change) * weights[0]
+                        acceleration_score = max(-0.05, min(0.05, acceleration_score))  # Limitar aceleración
+                    
+                    # Consistencia de tendencia con protección
+                    if len(window_values) >= 2:
+                        changes = [window_values[i] - window_values[i+1] 
+                                 for i in range(len(window_values)-1)]
+                        if changes:  # Verificar que hay cambios
+                            trend_consistency = 1.0 if all(c >= 0 for c in changes) or all(c <= 0 for c in changes) else 0.5
+                        else:
+                            trend_consistency = 0.5
+            
+            # Obtener frecuencia más reciente
+            recent_rel = window_dicts.get('muy reciente', {}).get(number, (0, 0.0))[1]
+            if not recent_rel:
+                recent_rel = window_dicts.get('reciente', {}).get(number, (0, 0.0))[1]
+            
+            # Calcular score mejorado con múltiples factores
+            base_score = recent_rel * 40  # Score base de frecuencia reciente
+            momentum_bonus = momentum_score * 30  # Bonus por momentum positivo
+            acceleration_bonus = acceleration_score * 20  # Bonus por aceleración
+            consistency_bonus = trend_consistency * 10  # Bonus por consistencia
+            
+            score = base_score + momentum_bonus + acceleration_bonus + consistency_bonus
             score = max(score, 0)
             
-            # Confianza basada en datos recientes
-            confidence = self.analyzer.get_prediction_confidence_score(number, recent_days)
+            # Confianza mejorada
+            base_confidence = self.analyzer.get_prediction_confidence_score(number, days)
             
-            # Ajustar confianza por tendencia
-            if trend_factor > 0:
-                confidence = min(confidence * 1.2, 1.0)
+            # Ajustar confianza por calidad de tendencia con límites conservadores
+            trend_quality = (min(abs(momentum_score) * 10, 1.0) + trend_consistency) / 2
+            confidence_multiplier = 0.8 + trend_quality * 0.2  # Rango más conservador [0.8, 1.0]
+            adjusted_confidence = base_confidence * confidence_multiplier
+            confidence = min(adjusted_confidence, 1.0)
             
-            # Razón
-            if trend_factor > 0.2:
-                reason = f"Tendencia ascendente: {trend_factor:.1%} de incremento"
-            elif recent_abs > 0:
-                reason = f"Actividad reciente: {recent_abs} apariciones"
+            # Razón mejorada
+            if momentum_score > 0.01:
+                reason = f"Momentum ascendente: +{momentum_score:.3f} (consistencia: {trend_consistency:.1%})"
+            elif momentum_score < -0.01:
+                reason = f"Momentum descendente: {momentum_score:.3f}"
+            elif recent_rel > baseline_rel:
+                reason = f"Por encima del promedio: {recent_rel:.3f} vs {baseline_rel:.3f}"
             else:
-                reason = f"Patrón emergente detectado"
+                reason = f"Actividad reciente: {recent_rel:.3f} frecuencia relativa"
             
             predictions.append((number, score, confidence, reason))
         
@@ -200,10 +275,20 @@ class LotteryPredictor:
             pattern_bonus = self._get_pattern_bonus(number, patterns)
             combined_scores[number] += pattern_bonus * self.method_weights['pattern']
         
-        # Agregar factor de aleatoriedad controlada
+        # Agregar factor de aleatoriedad controlada más conservador
         for number in combined_scores:
-            randomness_factor = random.uniform(0.8, 1.2)
+            randomness_factor = random.uniform(0.95, 1.05)  # Factor más conservador
             combined_scores[number] *= randomness_factor
+        
+        # Aplicar normalización de scores para mejor distribución
+        if combined_scores:
+            max_score = max(combined_scores.values())
+            min_score = min(combined_scores.values())
+            if max_score > min_score:
+                for number in combined_scores:
+                    # Normalizar a rango 0-100
+                    normalized_score = ((combined_scores[number] - min_score) / (max_score - min_score)) * 100
+                    combined_scores[number] = normalized_score
         
         # Normalizar confianza
         for number in combined_confidence:
