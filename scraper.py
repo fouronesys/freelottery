@@ -15,8 +15,7 @@ class QuinielaScraperManager:
     def __init__(self):
         self.base_urls = [
             "https://www.loteka.com.do",
-            "https://loteriasdominicanas.com",
-            "https://resultadosrd.com"
+            "https://loteriasdominicanas.com"
         ]
         
         self.headers = {
