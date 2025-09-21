@@ -393,6 +393,210 @@ class StatisticalAnalyzer:
             print(f"Error analizando patrones de día de la semana: {e}")
             return {}
     
+    def analyze_day_of_month_patterns(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Analiza patrones por día del mes (1-31)
+        
+        Returns:
+            Dict con análisis por día del mes, recomendaciones específicas
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            
+            if not draws_data:
+                return {}
+            
+            # Agrupar por día del mes
+            month_day_patterns = {}
+            
+            for date_str, number in draws_data:
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                day_of_month = date_obj.day
+                
+                if day_of_month not in month_day_patterns:
+                    month_day_patterns[day_of_month] = []
+                month_day_patterns[day_of_month].append(number)
+            
+            # Calcular estadísticas por día del mes
+            day_stats = {}
+            best_numbers_by_day = {}
+            
+            for day, numbers in month_day_patterns.items():
+                if numbers:
+                    frequency_counter = Counter(numbers)
+                    # Top 5 números más frecuentes para este día
+                    top_numbers = frequency_counter.most_common(5)
+                    
+                    day_stats[day] = {
+                        'total_draws': len(numbers),
+                        'unique_numbers': len(set(numbers)),
+                        'most_frequent_number': top_numbers[0][0] if top_numbers else None,
+                        'most_frequent_count': top_numbers[0][1] if top_numbers else 0,
+                        'avg_number': round(statistics.mean(numbers), 1),
+                        'top_5_numbers': [(num, count) for num, count in top_numbers],
+                        'frequency_distribution': frequency_counter,
+                        'std_deviation': round(statistics.stdev(numbers), 2) if len(numbers) > 1 else 0
+                    }
+                    
+                    # Recomendaciones específicas para este día
+                    best_numbers_by_day[day] = [num for num, count in top_numbers]
+            
+            # Obtener día actual para recomendación inmediata
+            today = datetime.now().day
+            today_recommendation = best_numbers_by_day.get(today, [])
+            
+            return {
+                'day_statistics': day_stats,
+                'best_numbers_by_day': best_numbers_by_day,
+                'today_recommendation': {
+                    'day': today,
+                    'recommended_numbers': today_recommendation[:3],  # Top 3 para hoy
+                    'confidence_level': 'Alta' if len(today_recommendation) >= 3 else 'Media'
+                },
+                'analysis_summary': {
+                    'days_analyzed': days,
+                    'total_days_with_data': len(day_stats),
+                    'most_active_day': max(day_stats.items(), key=lambda x: x[1]['total_draws'])[0] if day_stats else None,
+                    'least_active_day': min(day_stats.items(), key=lambda x: x[1]['total_draws'])[0] if day_stats else None
+                }
+            }
+            
+        except Exception as e:
+            print(f"Error analizando patrones de día del mes: {e}")
+            return {}
+    
+    def get_best_play_recommendation(self, target_date: datetime = None) -> Dict[str, Any]:
+        """
+        Genera la mejor recomendación de jugada basada en todos los análisis disponibles
+        
+        Args:
+            target_date: Fecha objetivo (por defecto hoy)
+            
+        Returns:
+            Dict con recomendación completa de la mejor jugada del día
+        """
+        try:
+            if target_date is None:
+                target_date = datetime.now()
+            
+            day_of_month = target_date.day
+            day_of_week = target_date.strftime('%A')
+            
+            # Análisis de frecuencias (últimos 180 días)
+            hot_numbers = self.get_hot_numbers(days=180, limit=10)
+            cold_numbers = self.get_cold_numbers(days=180, limit=10)
+            
+            # Análisis por día del mes
+            month_patterns = self.analyze_day_of_month_patterns(days=365)
+            day_specific_numbers = month_patterns.get('best_numbers_by_day', {}).get(day_of_month, [])
+            
+            # Análisis por día de la semana
+            week_patterns = self.analyze_day_of_week_patterns(days=180)
+            day_names_spanish = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            weekday_index = target_date.weekday()
+            day_name_spanish = day_names_spanish[weekday_index]
+            week_specific_data = week_patterns.get(day_name_spanish, {})
+            
+            # Análisis de tendencias recientes (últimos 30 días)
+            recent_trends = self.get_temporal_trends(days=30)
+            
+            # Sistema de puntuación integrado
+            number_scores = {}
+            
+            # Inicializar puntuaciones para todos los números
+            for num in range(100):
+                number_scores[num] = {
+                    'total_score': 0,
+                    'frequency_score': 0,
+                    'day_month_score': 0,
+                    'day_week_score': 0,
+                    'trend_score': 0,
+                    'reasons': []
+                }
+            
+            # 1. Puntuación por frecuencia histórica (30% del peso)
+            hot_nums_dict = {num: freq for num, freq, _ in hot_numbers}
+            max_hot_freq = max(hot_nums_dict.values()) if hot_nums_dict else 1
+            
+            for num, freq, _ in hot_numbers:
+                score = (freq / max_hot_freq) * 30
+                number_scores[num]['frequency_score'] = score
+                number_scores[num]['total_score'] += score
+                number_scores[num]['reasons'].append(f"Número caliente (freq: {freq})")
+            
+            # 2. Puntuación por día del mes (25% del peso)
+            for i, num in enumerate(day_specific_numbers[:10]):
+                score = (10 - i) * 2.5  # Decreciente del 25 al 2.5
+                number_scores[num]['day_month_score'] = score
+                number_scores[num]['total_score'] += score
+                number_scores[num]['reasons'].append(f"Favorito para día {day_of_month} del mes")
+            
+            # 3. Puntuación por día de la semana (20% del peso)
+            if week_specific_data and 'most_frequent' in week_specific_data:
+                most_freq_weekday = week_specific_data['most_frequent']
+                number_scores[most_freq_weekday]['day_week_score'] = 20
+                number_scores[most_freq_weekday]['total_score'] += 20
+                number_scores[most_freq_weekday]['reasons'].append(f"Más frecuente los {day_name_spanish}")
+            
+            # 4. Puntuación por tendencias recientes (25% del peso)
+            recent_avg = statistics.mean([trend['Frecuencia_Promedio'] for trend in recent_trends]) if recent_trends else 0
+            if recent_avg > 0:
+                recent_hot = self.get_hot_numbers(days=30, limit=5)
+                for i, (num, freq, _) in enumerate(recent_hot):
+                    score = (5 - i) * 5  # 25, 20, 15, 10, 5 puntos
+                    number_scores[num]['trend_score'] = score
+                    number_scores[num]['total_score'] += score
+                    number_scores[num]['reasons'].append("Tendencia reciente positiva")
+            
+            # Ordenar por puntuación total
+            sorted_recommendations = sorted(
+                [(num, data) for num, data in number_scores.items()],
+                key=lambda x: x[1]['total_score'],
+                reverse=True
+            )
+            
+            # Top recomendaciones
+            top_recommendations = sorted_recommendations[:10]
+            
+            # Tipos de jugadas recomendadas
+            best_number = top_recommendations[0][0]
+            second_best = top_recommendations[1][0] if len(top_recommendations) > 1 else None
+            third_best = top_recommendations[2][0] if len(top_recommendations) > 2 else None
+            
+            play_recommendations = {
+                'quiniela_simple': {
+                    'number': best_number,
+                    'confidence': 'Alta' if top_recommendations[0][1]['total_score'] > 50 else 'Media',
+                    'expected_payout': '60-75 pesos por peso'
+                },
+                'pale_combinations': [],
+                'tripleta_suggestion': [best_number, second_best, third_best] if all([best_number, second_best, third_best]) else None
+            }
+            
+            # Combinaciones Palé recomendadas
+            if second_best:
+                play_recommendations['pale_combinations'] = [
+                    {'numbers': [best_number, second_best], 'type': '1ro y 2do', 'payout': '1,000 pesos'},
+                ]
+            
+            return {
+                'target_date': target_date.strftime('%Y-%m-%d'),
+                'day_of_month': day_of_month,
+                'day_of_week': day_name_spanish,
+                'best_single_number': best_number,
+                'top_recommendations': [(num, data['total_score'], data['reasons']) for num, data in top_recommendations[:5]],
+                'play_strategies': play_recommendations,
+                'analysis_confidence': 'Alta' if top_recommendations[0][1]['total_score'] > 60 else 'Media',
+                'methodology': 'Análisis integrado: frecuencia histórica (30%) + patrones día del mes (25%) + día de la semana (20%) + tendencias recientes (25%)'
+            }
+            
+        except Exception as e:
+            print(f"Error generando recomendación de jugada: {e}")
+            return {}
+    
     def analyze_monthly_patterns(self, days: int = 365) -> Dict[str, Any]:
         """
         Analiza patrones por mes del año

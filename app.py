@@ -54,6 +54,66 @@ db, scraper, analyzer, predictor = init_components()
 st.title("🎯 Sistema de Análisis Estadístico - Quiniela Loteka")
 st.markdown("### Predicción de números basada en análisis de frecuencia histórica")
 
+# Sección explicativa sobre la Quiniela de Loteka
+with st.expander("❓ ¿Cómo funciona la Quiniela de Loteka? - Guía Completa", expanded=False):
+    st.markdown("""
+    ## 🎯 **¿Qué es la Quiniela Loteka?**
+    La Quiniela Loteka es un juego diario de lotería electrónica operado por la empresa Loteka en República Dominicana desde 2009. Es uno de los sorteos más populares del país.
+
+    ## ⚙️ **¿Cómo Funciona?**
+    - **Sistema**: Usa 3 globos/tómbolas electrónicas
+    - **Números**: Cada globo contiene bolos numerados del 00 al 99
+    - **Extracción**: Se extrae 1 bolo de cada globo
+    - **Premios**: Globo 1 = 1er premio, Globo 2 = 2do premio, Globo 3 = 3er premio
+
+    ## 🕰️ **Horario de Sorteos**
+    - **Días**: Todos los días (lunes a domingo)
+    - **Hora**: 7:55 PM
+    - **Transmisión**: Por Telesistema (Canal 11)
+
+    ## 🎲 **Tipos de Jugadas**
+
+    ### 1. **Quiniela Simple**
+    - Eliges 1 número del 00 al 99
+    - Puedes ganar con cualquiera de los 3 premios
+    - **Pagos por peso apostado**:
+      - 1er premio: 60-75 pesos
+      - 2do premio: 8-10 pesos  
+      - 3er premio: 4-5 pesos
+
+    ### 2. **Quiniela Exacta**
+    - Solo juegas al primer número sorteado
+    - Paga 70 pesos por peso apostado
+
+    ### 3. **Palé**
+    - Juegas a combinaciones de 2 números
+    - **Pagos por peso apostado**:
+      - 1ro y 2do: 1,000 pesos
+      - 1ro y 3ro: 1,000 pesos
+      - 2do y 3ro: 100 pesos
+
+    ### 4. **Tripleta**
+    - Juegas los 3 números exactos
+    - **Pagos por peso apostado**:
+      - 3 cifras exactas: 20,000 pesos
+      - 2 cifras: 100 pesos
+
+    ## 🎮 **Cómo Jugar**
+    1. **Visita** un punto de venta autorizado de Loteka
+    2. **Elige** tu número(s) del 00 al 99
+    3. **Especifica** el tipo de jugada (quiniela, palé, tripleta)
+    4. **Paga** la apuesta (mínimo RD$5)
+    5. **Conserva** tu boleto como comprobante
+
+    ## ⚠️ **Notas Importantes**
+    - Los sorteos se realizan incluso en días feriados (una hora más temprano)
+    - Conserva tu boleto original para cobrar premios
+    - Los premios mayores a RD$100,001 están sujetos a retención de impuestos
+    - Ser mayor de 18 años para participar
+    """)
+    
+    st.info("💡 **Este sistema te ayuda a analizar patrones históricos y generar predicciones inteligentes para mejorar tus decisiones de juego.**")
+
 # Sidebar para controles
 st.sidebar.header("⚙️ Configuración")
 
@@ -858,10 +918,144 @@ with tab6:
 
 with tab7:
     st.header("📅 Recomendaciones Inteligentes por Día")
-    st.write("Sistema de recomendaciones que combina múltiples análisis para sugerir números según el día de la semana seleccionado.")
+    st.write("Sistema avanzado de recomendaciones que combina múltiples análisis para sugerir los mejores números y jugadas.")
     
     if total_draws > 0:
-        # Selector de día
+        # Sección de recomendación del día actual
+        st.subheader("🌟 Mejor Jugada del Día - HOY")
+        
+        if st.button("🚀 Obtener Mejor Jugada para HOY", type="primary", key="today_best"):
+            with st.spinner("Analizando todos los patrones para generar la mejor recomendación..."):
+                today_recommendation = analyzer.get_best_play_recommendation()
+                
+                if today_recommendation:
+                    # Mostrar fecha y información básica
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("Fecha", today_recommendation['target_date'])
+                        st.metric("Día del Mes", today_recommendation['day_of_month'])
+                    
+                    with col2:
+                        st.metric("Día de la Semana", today_recommendation['day_of_week'])
+                        st.metric("Confianza", today_recommendation['analysis_confidence'])
+                    
+                    with col3:
+                        st.metric("🏆 Mejor Número", 
+                                today_recommendation['best_single_number'], 
+                                help="Número con mayor puntuación del análisis integrado")
+                    
+                    # Recomendaciones de jugadas
+                    st.subheader("🎯 Estrategias de Juego Recomendadas")
+                    
+                    play_strategies = today_recommendation['play_strategies']
+                    
+                    # Quiniela Simple
+                    quiniela = play_strategies['quiniela_simple']
+                    st.success(f"**🎲 Quiniela Simple:** Número **{quiniela['number']}** | Confianza: {quiniela['confidence']} | Pago: {quiniela['expected_payout']}")
+                    
+                    # Palé
+                    if play_strategies['pale_combinations']:
+                        pale = play_strategies['pale_combinations'][0]
+                        st.info(f"**🎯 Palé Recomendado:** {pale['numbers'][0]}-{pale['numbers'][1]} ({pale['type']}) | Pago: {pale['payout']}")
+                    
+                    # Tripleta
+                    if play_strategies['tripleta_suggestion']:
+                        tripleta = play_strategies['tripleta_suggestion']
+                        st.warning(f"**🎰 Tripleta Sugerida:** {tripleta[0]}-{tripleta[1]}-{tripleta[2]} | Pago máximo: 20,000 pesos")
+                    
+                    # Top 5 recomendaciones detalladas
+                    st.subheader("🏅 Top 5 Números Recomendados")
+                    
+                    cols = st.columns(5)
+                    for i, (num, score, reasons) in enumerate(today_recommendation['top_recommendations']):
+                        with cols[i]:
+                            st.metric(
+                                label=f"#{i+1}",
+                                value=str(num),
+                                delta=f"{score:.1f} pts",
+                                help=f"Razones: {' | '.join(reasons[:2])}"
+                            )
+                    
+                    # Metodología
+                    with st.expander("📋 Metodología del Análisis"):
+                        st.write(today_recommendation['methodology'])
+                        st.write("Esta recomendación combina análisis histórico, patrones temporales y tendencias recientes para maximizar las probabilidades de éxito.")
+        
+        st.divider()
+        
+        # Análisis por día del mes
+        st.subheader("📊 Análisis por Día del Mes")
+        
+        if st.button("📈 Mostrar Patrones por Día del Mes", key="month_patterns"):
+            with st.spinner("Analizando patrones por día del mes..."):
+                month_patterns = analyzer.analyze_day_of_month_patterns(days=365)
+                
+                if month_patterns and 'day_statistics' in month_patterns:
+                    # Resumen general
+                    summary = month_patterns['analysis_summary']
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("Días Analizados", summary['days_analyzed'])
+                    
+                    with col2:
+                        st.metric("Días con Datos", summary['total_days_with_data'])
+                    
+                    with col3:
+                        if summary['most_active_day']:
+                            st.metric("Día Más Activo", f"Día {summary['most_active_day']}")
+                    
+                    with col4:
+                        if summary['least_active_day']:
+                            st.metric("Día Menos Activo", f"Día {summary['least_active_day']}")
+                    
+                    # Recomendación para hoy
+                    today_rec = month_patterns['today_recommendation']
+                    if today_rec['recommended_numbers']:
+                        st.success(f"**Para el día {today_rec['day']} (HOY):** Números recomendados: {', '.join(map(str, today_rec['recommended_numbers']))} | Confianza: {today_rec['confidence_level']}")
+                    
+                    # Tabla de mejores números por día del mes
+                    st.subheader("📅 Mejores Números por Día del Mes")
+                    
+                    # Crear datos para tabla
+                    table_data = []
+                    best_numbers_by_day = month_patterns['best_numbers_by_day']
+                    day_stats = month_patterns['day_statistics']
+                    
+                    for day in range(1, 32):
+                        if day in best_numbers_by_day and day in day_stats:
+                            top_3 = best_numbers_by_day[day][:3]
+                            stats = day_stats[day]
+                            table_data.append({
+                                'Día del Mes': day,
+                                'Top 3 Números': ', '.join(map(str, top_3)),
+                                'Más Frecuente': stats['most_frequent_number'],
+                                'Total Sorteos': stats['total_draws'],
+                                'Promedio': stats['avg_number']
+                            })
+                    
+                    if table_data:
+                        df_month = pd.DataFrame(table_data)
+                        st.dataframe(df_month, width='stretch')
+                        
+                        # Gráfico de actividad por día del mes
+                        fig = px.bar(
+                            df_month,
+                            x='Día del Mes',
+                            y='Total Sorteos',
+                            title="Actividad de Sorteos por Día del Mes",
+                            color='Total Sorteos',
+                            color_continuous_scale='viridis'
+                        )
+                        st.plotly_chart(fig, width='stretch')
+        
+        st.divider()
+        
+        # Selector de día personalizado
+        st.subheader("🎯 Recomendaciones Personalizadas")
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -888,7 +1082,7 @@ with tab7:
                 help="Cantidad de números a recomendar"
             )
         
-        if st.button("🎯 Generar Recomendaciones Inteligentes", type="primary"):
+        if st.button("🎯 Generar Recomendaciones Personalizadas", type="secondary"):
             with st.spinner("Analizando patrones y generando recomendaciones..."):
                 
                 # 1. Análisis por día de la semana
