@@ -603,7 +603,7 @@ class StatisticalAnalyzer:
             print(f"Error analizando patrones de día del mes: {e}")
             return {}
     
-    def get_best_play_recommendation(self, target_date: datetime = None) -> Dict[str, Any]:
+    def get_best_play_recommendation(self, target_date: Optional[datetime] = None) -> Dict[str, Any]:
         """
         Genera la mejor recomendación de jugada basada en todos los análisis disponibles
         
@@ -1236,7 +1236,7 @@ class StatisticalAnalyzer:
                 frequencies = fftfreq(len(daily_averages))
                 
                 # Encontrar frecuencias dominantes
-                magnitude = np.abs(fft_values)
+                magnitude = np.abs(np.array(fft_values))
                 dominant_freqs = []
                 for i in range(1, len(magnitude)//2):
                     if magnitude[i] > np.mean(magnitude) + 2*np.std(magnitude):
@@ -1346,6 +1346,7 @@ class StatisticalAnalyzer:
                 else:
                     z_runs, runs_p = 0, 1
             else:
+                expected_runs = 0.0
                 z_runs, runs_p = 0, 1
             
             # 4. Análisis de gaps (intervalos entre apariciones)
@@ -1431,7 +1432,7 @@ class StatisticalAnalyzer:
             
             for n_clusters in [3, 4, 5, 6]:
                 if len(features) >= n_clusters:
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
                     cluster_labels = kmeans.fit_predict(features_scaled)
                     
                     # Organizar clusters
@@ -1447,7 +1448,7 @@ class StatisticalAnalyzer:
                     inertia = kmeans.inertia_
                     cluster_results[n_clusters] = {
                         'clusters': dict(clusters),
-                        'inertia': float(inertia),
+                        'inertia': float(inertia) if inertia is not None else 0.0,
                         'centroids': kmeans.cluster_centers_.tolist()
                     }
             

@@ -14,7 +14,7 @@ class QuinielaScraperManager:
     
     def __init__(self):
         self.base_urls = [
-            "https://www.loteka.com.do",
+            "https://loteka.com.do",
             "https://loteriasdominicanas.com"
         ]
         
@@ -27,12 +27,14 @@ class QuinielaScraperManager:
             'Upgrade-Insecure-Requests': '1',
         }
         
-        # Patrones para extraer números de diferentes formatos
+        # Patrones mejorados para extraer números de quiniela de las páginas específicas
         self.number_patterns = [
+            r'(?:1er\.|2do\.|3er\.)\s*(\d{2})',  # Patrón para Loteka (1er. 34, 2do. 89, etc.)
+            r'quiniela\s+loteka[^\d]*(\d{2})(\d{2})(\d{2})',  # Patrón para loteriasdominicanas.com
+            r'(\d{6})',  # Número de 6 dígitos (como en loteriasdominicanas: 348996)
             r'quiniela.*?(\d{2})',  # Quiniela seguido de 2 dígitos
             r'resultado.*?(\d{2})', # Resultado seguido de 2 dígitos
             r'ganador.*?(\d{2})',   # Ganador seguido de 2 dígitos
-            r'(\d{2})',             # Cualquier número de 2 dígitos
         ]
         
         # Simulación de datos realistas para desarrollo
@@ -130,14 +132,27 @@ class QuinielaScraperManager:
         results = []
         
         try:
-            # Diferentes endpoints posibles para cada sitio
-            possible_endpoints = [
-                f"{base_url}/quiniela",
-                f"{base_url}/resultados",
-                f"{base_url}/loteria/quiniela",
-                f"{base_url}/resultados/quiniela",
-                f"{base_url}/loteka/quiniela"
-            ]
+            # Endpoints específicos para cada sitio
+            if "loteka.com.do" in base_url:
+                possible_endpoints = [
+                    f"{base_url}",  # Página principal de Loteka
+                    f"{base_url}/quiniela",
+                    f"{base_url}/resultados"
+                ]
+            elif "loteriasdominicanas.com" in base_url:
+                possible_endpoints = [
+                    f"{base_url}/loteka/quiniela-mega-decenas",  # Endpoint específico para Quiniela Loteka
+                    f"{base_url}/loteka",
+                    f"{base_url}"
+                ]
+            else:
+                possible_endpoints = [
+                    f"{base_url}/quiniela",
+                    f"{base_url}/resultados",
+                    f"{base_url}/loteria/quiniela",
+                    f"{base_url}/resultados/quiniela",
+                    f"{base_url}/loteka/quiniela"
+                ]
             
             for endpoint in possible_endpoints:
                 try:
@@ -167,7 +182,7 @@ class QuinielaScraperManager:
     
     def _parse_lottery_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
-        Parsea el contenido extraído buscando resultados de lotería
+        Parsea el contenido extraído buscando resultados de lotería de las páginas específicas
         """
         results = []
         
@@ -175,9 +190,126 @@ class QuinielaScraperManager:
             return results
         
         try:
-            # Buscar fechas y números en el contenido
+            # Determinar el tipo de sitio y usar lógica específica
+            if 'loteka.com.do' in content.lower() or 'quiniela' in content.lower():
+                results.extend(self._parse_loteka_content(content, start_date, end_date))
+            
+            if 'loteriasdominicanas.com' in content.lower() or 'quiniela loteka' in content.lower():
+                results.extend(self._parse_loteriasdominicanas_content(content, start_date, end_date))
+            
+            # Si no se encontraron resultados específicos, usar parsing genérico
+            if not results:
+                results.extend(self._parse_generic_content(content, start_date, end_date))
+        
+        except Exception as e:
+            print(f"Error parseando contenido: {e}")
+        
+        return results
+    
+    def _parse_loteka_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """
+        Parsea contenido específico de loteka.com.do
+        """
+        results = []
+        
+        try:
+            # Buscar patrones como "1er. 34, 2do. 89, 3er. 96"
+            quiniela_pattern = r'(?:1er\.|2do\.|3er\.)\s*(\d{2})'
+            matches = re.findall(quiniela_pattern, content)
+            
+            # Buscar fechas (formato DD/MM/YYYY)
+            date_pattern = r'(\d{1,2})/(\d{1,2})/(\d{4})'
+            date_matches = re.findall(date_pattern, content)
+            
+            # Usar la fecha más reciente encontrada
+            current_date = datetime.now()
+            if date_matches:
+                try:
+                    day, month, year = date_matches[-1]  # Última fecha encontrada
+                    parsed_date = datetime(int(year), int(month), int(day))
+                    if start_date <= parsed_date <= end_date:
+                        current_date = parsed_date
+                except (ValueError, IndexError):
+                    pass
+            
+            # Agregar los números encontrados
+            for i, number_str in enumerate(matches):
+                try:
+                    number = int(number_str)
+                    if 0 <= number <= 99:
+                        results.append({
+                            'date': current_date.strftime('%Y-%m-%d'),
+                            'number': number,
+                            'position': i + 1,
+                            'prize_amount': 0
+                        })
+                except ValueError:
+                    continue
+        
+        except Exception as e:
+            print(f"Error parseando contenido de Loteka: {e}")
+        
+        return results
+    
+    def _parse_loteriasdominicanas_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """
+        Parsea contenido específico de loteriasdominicanas.com
+        """
+        results = []
+        
+        try:
+            # Buscar patrones como "348996" (6 dígitos para quiniela)
             lines = content.split('\n')
             
+            current_date = datetime.now()
+            
+            for line in lines:
+                line = line.strip()
+                
+                # Buscar fechas (formato DD-MM)
+                date_match = re.search(r'(\d{1,2})-(\d{1,2})', line)
+                if date_match:
+                    try:
+                        day, month = date_match.groups()
+                        # Asumir año actual
+                        parsed_date = datetime(datetime.now().year, int(month), int(day))
+                        if start_date <= parsed_date <= end_date:
+                            current_date = parsed_date
+                    except (ValueError, IndexError):
+                        pass
+                
+                # Buscar números de quiniela (6 dígitos)
+                if 'quiniela loteka' in line.lower() or 'loteka' in line.lower():
+                    number_matches = re.findall(r'(\d{6})', line)
+                    for number_str in number_matches:
+                        # Dividir el número de 6 dígitos en 3 números de 2 dígitos
+                        if len(number_str) == 6:
+                            for i in range(0, 6, 2):
+                                try:
+                                    number = int(number_str[i:i+2])
+                                    if 0 <= number <= 99:
+                                        results.append({
+                                            'date': current_date.strftime('%Y-%m-%d'),
+                                            'number': number,
+                                            'position': (i // 2) + 1,
+                                            'prize_amount': 0
+                                        })
+                                except ValueError:
+                                    continue
+        
+        except Exception as e:
+            print(f"Error parseando contenido de LoteriasDominicanas: {e}")
+        
+        return results
+    
+    def _parse_generic_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """
+        Parsing genérico para otros sitios
+        """
+        results = []
+        
+        try:
+            lines = content.split('\n')
             current_date = None
             
             for line in lines:
@@ -185,9 +317,9 @@ class QuinielaScraperManager:
                 
                 # Buscar fechas en diferentes formatos
                 date_patterns = [
-                    r'(\d{1,2})/(\d{1,2})/(\d{4})',      # DD/MM/YYYY
-                    r'(\d{4})-(\d{1,2})-(\d{1,2})',      # YYYY-MM-DD
-                    r'(\d{1,2})-(\d{1,2})-(\d{4})',      # DD-MM-YYYY
+                    r'(\d{1,2})/(\d{1,2})/(\d{4})',
+                    r'(\d{4})-(\d{1,2})-(\d{1,2})',
+                    r'(\d{1,2})-(\d{1,2})-(\d{4})',
                 ]
                 
                 for pattern in date_patterns:
@@ -211,23 +343,24 @@ class QuinielaScraperManager:
                 
                 # Si tenemos una fecha válida, buscar números
                 if current_date and ('quiniela' in line or 'resultado' in line or 'ganador' in line):
-                    for pattern in self.number_patterns:
+                    simple_patterns = [r'(\d{2})']
+                    for pattern in simple_patterns:
                         numbers = re.findall(pattern, line)
-                        for i, number_str in enumerate(numbers):
+                        for i, number_str in enumerate(numbers[:3]):  # Limitar a 3 números por línea
                             try:
                                 number = int(number_str)
-                                if 0 <= number <= 99:  # Validar rango típico de quiniela
+                                if 0 <= number <= 99:
                                     results.append({
                                         'date': current_date.strftime('%Y-%m-%d'),
                                         'number': number,
                                         'position': i + 1,
-                                        'prize_amount': 0  # Se llenará si se encuentra información de premio
+                                        'prize_amount': 0
                                     })
                             except ValueError:
                                 continue
         
         except Exception as e:
-            print(f"Error parseando contenido: {e}")
+            print(f"Error en parsing genérico: {e}")
         
         return results
     

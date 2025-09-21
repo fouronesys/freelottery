@@ -292,11 +292,11 @@ with tab2:
             
             # Aplicar ordenamiento
             if sort_by == "Frecuencia Absoluta":
-                df_filtered = df_filtered.sort_values('Frecuencia Absoluta', ascending=False)
+                df_filtered = df_filtered.sort_values(by='Frecuencia Absoluta', ascending=False)
             elif sort_by == "Número":
-                df_filtered = df_filtered.sort_values('Número', ascending=True)
+                df_filtered = df_filtered.sort_values(by='Número', ascending=True)
             else:
-                df_filtered = df_filtered.sort_values('Frecuencia_Relativa_Num', ascending=False)
+                df_filtered = df_filtered.sort_values(by='Frecuencia_Relativa_Num', ascending=False)
             
             # Remover columna numérica auxiliar para mostrar
             df_filtered = df_filtered.drop('Frecuencia_Relativa_Num', axis=1)
