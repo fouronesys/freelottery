@@ -280,6 +280,32 @@ class DatabaseManager:
         except sqlite3.Error:
             return []
     
+    def get_draws_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Tuple[str, int, str]]:
+        """
+        Obtiene sorteos en un rango de fechas específico para análisis de co-ocurrencia
+        
+        Args:
+            start_date: Fecha de inicio
+            end_date: Fecha de fin
+            
+        Returns:
+            List[Tuple[str, int, str]]: [(date_str, number, date_str), ...] 
+            donde date_str sirve como draw_id (agrupando por fecha de sorteo)
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                SELECT date, number FROM draw_results
+                WHERE date BETWEEN ? AND ?
+                ORDER BY date, position
+                """, (start_date.date(), end_date.date()))
+                rows = cursor.fetchall()
+                # Convertir (date, number) a (date_str, number, date_str) para compatibilidad
+                return [(str(date), number, str(date)) for date, number in rows]
+        except sqlite3.Error:
+            return []
+    
     def get_unique_numbers(self) -> List[int]:
         """Obtiene todos los números únicos que han salido"""
         try:

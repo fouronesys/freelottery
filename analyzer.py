@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Tuple, Dict, Any, Optional
-from collections import Counter
+from collections import Counter, defaultdict
 import statistics
 from database import DatabaseManager
 import calendar
