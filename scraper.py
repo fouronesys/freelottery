@@ -216,38 +216,58 @@ class QuinielaScraperManager:
         results = []
         
         try:
-            # Buscar patrones como "1er. 34, 2do. 89, 3er. 96"
-            quiniela_pattern = r'(?:1er\.|2do\.|3er\.)\s*(\d{2})'
-            matches = re.findall(quiniela_pattern, content)
+            # Dividir contenido en líneas para procesamiento secuencial
+            lines = content.split('\n')
+            current_date = None
+            position_counter = 1
+            draw_numbers = []
             
-            # Buscar fechas (formato DD/MM/YYYY)
-            date_pattern = r'(\d{1,2})/(\d{1,2})/(\d{4})'
-            date_matches = re.findall(date_pattern, content)
-            
-            # Usar la fecha más reciente encontrada
-            current_date = datetime.now()
-            if date_matches:
-                try:
-                    day, month, year = date_matches[-1]  # Última fecha encontrada
-                    parsed_date = datetime(int(year), int(month), int(day))
-                    if start_date <= parsed_date <= end_date:
+            for line in lines:
+                line = line.strip()
+                
+                # Buscar fechas (formato DD/MM/YYYY o DD-MM-YYYY)
+                date_match = re.search(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})', line)
+                if date_match:
+                    try:
+                        day, month, year = date_match.groups()
+                        parsed_date = datetime(int(year), int(month), int(day))
+                        
+                        # Si hay números acumulados y fecha anterior válida, procesarlos
+                        if current_date and start_date <= current_date <= end_date and draw_numbers:
+                            for i, num in enumerate(draw_numbers):
+                                results.append({
+                                    'date': current_date.strftime('%Y-%m-%d'),
+                                    'number': num,
+                                    'position': i + 1,
+                                    'prize_amount': 0
+                                })
+                        
+                        # Reiniciar para nueva fecha
                         current_date = parsed_date
-                except (ValueError, IndexError):
-                    pass
+                        draw_numbers = []
+                        position_counter = 1
+                    except (ValueError, IndexError):
+                        continue
+                
+                # Buscar números de quiniela en la línea
+                quiniela_matches = re.findall(r'(?:1er\.|2do\.|3er\.)\s*(\d{2})', line)
+                for number_str in quiniela_matches:
+                    try:
+                        number = int(number_str)
+                        if 0 <= number <= 99 and len(draw_numbers) < 3:
+                            draw_numbers.append(number)
+                    except ValueError:
+                        continue
             
-            # Agregar los números encontrados
-            for i, number_str in enumerate(matches):
-                try:
-                    number = int(number_str)
-                    if 0 <= number <= 99:
-                        results.append({
-                            'date': current_date.strftime('%Y-%m-%d'),
-                            'number': number,
-                            'position': i + 1,
-                            'prize_amount': 0
-                        })
-                except ValueError:
-                    continue
+            # Procesar últimos números si hay fecha válida
+            if current_date and start_date <= current_date <= end_date and draw_numbers:
+                for i, num in enumerate(draw_numbers):
+                    results.append({
+                        'date': current_date.strftime('%Y-%m-%d'),
+                        'number': num,
+                        'position': i + 1,
+                        'prize_amount': 0
+                    })
         
         except Exception as e:
             print(f"Error parseando contenido de Loteka: {e}")
