@@ -5,6 +5,7 @@ from typing import List, Tuple, Dict, Any, Optional
 from collections import Counter
 import statistics
 from database import DatabaseManager
+import calendar
 
 class StatisticalAnalyzer:
     """Realiza análisis estadísticos de los datos de lotería"""
@@ -344,3 +345,218 @@ class StatisticalAnalyzer:
         except Exception as e:
             print(f"Error calculando confianza para número {number}: {e}")
             return 0.0
+    
+    def analyze_day_of_week_patterns(self, days: int = 180) -> Dict[str, Any]:
+        """
+        Analiza patrones por día de la semana
+        
+        Returns:
+            Dict con análisis por día de la semana
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            
+            if not draws_data:
+                return {}
+            
+            # Agrupar por día de la semana
+            day_patterns = {}
+            day_names = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            
+            for date_str, number in draws_data:
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                day_of_week = day_names[date_obj.weekday()]
+                
+                if day_of_week not in day_patterns:
+                    day_patterns[day_of_week] = []
+                day_patterns[day_of_week].append(number)
+            
+            # Calcular estadísticas por día
+            day_stats = {}
+            for day, numbers in day_patterns.items():
+                if numbers:
+                    day_stats[day] = {
+                        'total_draws': len(numbers),
+                        'unique_numbers': len(set(numbers)),
+                        'most_frequent': max(set(numbers), key=numbers.count),
+                        'avg_number': statistics.mean(numbers),
+                        'frequency_distribution': Counter(numbers)
+                    }
+            
+            return day_stats
+            
+        except Exception as e:
+            print(f"Error analizando patrones de día de la semana: {e}")
+            return {}
+    
+    def analyze_monthly_patterns(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Analiza patrones por mes del año
+        
+        Returns:
+            Dict con análisis mensual
+        """
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            
+            if not draws_data:
+                return {}
+            
+            # Agrupar por mes
+            month_patterns = {}
+            
+            # Nombres de meses en español
+            spanish_months = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto', 
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+            
+            for date_str, number in draws_data:
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                month_name = spanish_months[date_obj.month]
+                
+                if month_name not in month_patterns:
+                    month_patterns[month_name] = []
+                month_patterns[month_name].append(number)
+            
+            # Calcular estadísticas por mes
+            month_stats = {}
+            for month, numbers in month_patterns.items():
+                if numbers:
+                    month_stats[month] = {
+                        'total_draws': len(numbers),
+                        'unique_numbers': len(set(numbers)),
+                        'most_frequent': max(set(numbers), key=numbers.count),
+                        'avg_number': statistics.mean(numbers),
+                        'frequency_distribution': Counter(numbers)
+                    }
+            
+            return month_stats
+            
+        except Exception as e:
+            print(f"Error analizando patrones mensuales: {e}")
+            return {}
+    
+    def calculate_ewma_trends(self, days: int = 90, alpha: float = 0.3) -> Dict[int, float]:
+        """
+        Calcula tendencias EWMA (Exponentially Weighted Moving Average) para números
+        
+        Args:
+            days: Período de análisis
+            alpha: Factor de suavizado (0 < alpha <= 1)
+            
+        Returns:
+            Dict[int, float]: Número -> tendencia EWMA
+        """
+        try:
+            import pandas as pd
+            
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            # Crear rango completo de fechas
+            date_range = pd.date_range(start=start_date.date(), end=end_date.date(), freq='D')
+            
+            # Obtener datos organizados por fecha
+            draws_data = self.db.get_numbers_by_date_range(start_date, end_date)
+            
+            if not draws_data:
+                return {}
+            
+            # Organizar por fecha
+            daily_counts = {}
+            for date_str, number in draws_data:
+                if date_str not in daily_counts:
+                    daily_counts[date_str] = Counter()
+                daily_counts[date_str][number] += 1
+            
+            # Obtener todos los números únicos
+            unique_numbers = self.db.get_unique_numbers()
+            
+            # Calcular EWMA para cada número
+            ewma_trends = {}
+            
+            for number in unique_numbers:
+                # Crear serie temporal completa con ceros
+                series = []
+                for date in date_range:
+                    date_str = date.strftime('%Y-%m-%d')
+                    count = daily_counts.get(date_str, {}).get(number, 0)
+                    series.append(count)
+                
+                # Calcular EWMA solo si hay alguna aparición
+                if series and sum(series) > 0:
+                    ewma = series[0]
+                    for value in series[1:]:
+                        ewma = alpha * value + (1 - alpha) * ewma
+                    
+                    ewma_trends[number] = ewma
+            
+            return ewma_trends
+            
+        except Exception as e:
+            print(f"Error calculando tendencias EWMA: {e}")
+            return {}
+    
+    def detect_frequency_changes(self, days: int = 90, threshold: float = 2.0) -> List[Dict[str, Any]]:
+        """
+        Detecta cambios significativos en la frecuencia de números
+        
+        Args:
+            days: Período de análisis
+            threshold: Umbral en desviaciones estándar
+            
+        Returns:
+            Lista de cambios detectados
+        """
+        try:
+            # Dividir el período en dos mitades
+            half_period = days // 2
+            
+            # Obtener frecuencias de ambos períodos
+            recent_frequencies = self.db.get_all_numbers_frequency(half_period)
+            previous_frequencies = self.db.get_all_numbers_frequency(days)
+            
+            # Crear diccionarios para comparación
+            recent_dict = {num: freq for num, freq, _ in recent_frequencies}
+            previous_dict = {num: freq for num, freq, _ in previous_frequencies}
+            
+            changes_detected = []
+            all_numbers = set(recent_dict.keys()) | set(previous_dict.keys())
+            
+            for number in all_numbers:
+                recent_freq = recent_dict.get(number, 0)
+                previous_freq = previous_dict.get(number, 0)
+                
+                # Calcular cambio relativo
+                if previous_freq > 0:
+                    change_ratio = (recent_freq - previous_freq) / previous_freq
+                    
+                    # Calcular significancia estadística (simplificada)
+                    if abs(change_ratio) > threshold / 10:  # Ajuste empírico
+                        change_type = "Incremento" if change_ratio > 0 else "Disminución"
+                        
+                        changes_detected.append({
+                            'number': number,
+                            'change_type': change_type,
+                            'change_ratio': change_ratio,
+                            'recent_frequency': recent_freq,
+                            'previous_frequency': previous_freq,
+                            'significance': abs(change_ratio)
+                        })
+            
+            # Ordenar por significancia
+            changes_detected.sort(key=lambda x: x['significance'], reverse=True)
+            
+            return changes_detected[:20]  # Top 20 cambios
+            
+        except Exception as e:
+            print(f"Error detectando cambios de frecuencia: {e}")
+            return []

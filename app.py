@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
 from datetime import datetime, timedelta
 import time
 
@@ -78,11 +79,12 @@ prediction_method = st.sidebar.selectbox(
 )
 
 # Pestañas principales
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Dashboard Principal",
     "🔢 Análisis de Números",
     "🎯 Predicciones",
-    "📊 Estadísticas Avanzadas"
+    "📊 Estadísticas Avanzadas",
+    "⏰ Análisis Temporal"
 ])
 
 with tab1:
@@ -149,7 +151,7 @@ with tab1:
                 color_continuous_scale='Reds'
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         # Números fríos
         st.subheader("🧊 Números Menos Frecuentes (Últimos 30 días)")
@@ -168,7 +170,7 @@ with tab1:
                 color_continuous_scale='Blues'
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     else:
         st.warning("⚠️ No hay datos históricos disponibles. Haz clic en 'Actualizar Datos Históricos' para comenzar.")
 
@@ -217,7 +219,7 @@ with tab2:
             # Remover columna numérica auxiliar para mostrar
             df_filtered = df_filtered.drop('Frecuencia_Relativa_Num', axis=1)
             
-            st.dataframe(df_filtered, use_container_width=True)
+            st.dataframe(df_filtered, width='stretch')
             
             # Distribución de frecuencias
             st.subheader("📊 Distribución de Frecuencias")
@@ -229,7 +231,7 @@ with tab2:
                 title="Distribución de Frecuencias de Números",
                 labels={'Frecuencia Absoluta': 'Frecuencia', 'count': 'Cantidad de Números'}
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
             
             # Análisis por rangos
             st.subheader("🎯 Análisis por Rangos de Números")
@@ -245,7 +247,7 @@ with tab2:
                     title="Frecuencia Promedio por Rango de Números",
                     labels={'Frecuencia Promedio': 'Frecuencia Promedio'}
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
     else:
         st.warning("⚠️ No hay datos suficientes para el análisis. Actualiza los datos históricos primero.")
 
@@ -309,7 +311,7 @@ with tab3:
                     st.subheader("📋 Detalles de Predicciones")
                     # Mostrar solo columnas formateadas para la tabla
                     display_df = df_pred[['Número', 'Puntuación', 'Confianza', 'Razón']]
-                    st.dataframe(display_df, use_container_width=True)
+                    st.dataframe(display_df, width='stretch')
                     
                     # Gráfico de confianza
                     fig = px.bar(
@@ -321,7 +323,7 @@ with tab3:
                         color='Puntuación_Num',
                         color_continuous_scale='Viridis'
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                 else:
                     st.error("❌ No se pudieron generar predicciones. Verifica los datos.")
         
@@ -335,7 +337,7 @@ with tab3:
             if 'Premio' in df_recent.columns:
                 df_recent['Premio'] = df_recent['Premio'].apply(format_currency)
             
-            st.dataframe(df_recent, use_container_width=True)
+            st.dataframe(df_recent, width='stretch')
     else:
         st.warning("⚠️ Se requieren datos históricos para generar predicciones.")
 
@@ -358,7 +360,7 @@ with tab4:
                 title="Tendencia de Frecuencia Promedio en el Tiempo",
                 labels={'Frecuencia_Promedio': 'Frecuencia Promedio'}
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         # Correlaciones
         st.subheader("🔗 Análisis de Correlaciones")
@@ -375,7 +377,7 @@ with tab4:
             df_corr = pd.DataFrame.from_records(top_correlations, columns=['Número 1', 'Número 2', 'Correlación', 'Significancia'])
             df_corr['Correlación'] = df_corr['Correlación'].apply(lambda x: f"{x:.3f}")
             
-            st.dataframe(df_corr, use_container_width=True)
+            st.dataframe(df_corr, width='stretch')
         
         # Estadísticas de rendimiento
         st.subheader("⚡ Estadísticas de Rendimiento")
@@ -421,6 +423,215 @@ with tab4:
         """)
     else:
         st.warning("⚠️ No hay datos suficientes para estadísticas avanzadas.")
+
+with tab5:
+    st.header("⏰ Análisis Temporal Avanzado")
+    
+    if total_draws > 0:
+        # Análisis por día de la semana
+        st.subheader("📅 Patrones por Día de la Semana")
+        
+        day_patterns = analyzer.analyze_day_of_week_patterns(days=days_to_analyze)
+        
+        if day_patterns:
+            # Preparar datos para visualización
+            days_data = []
+            for day, stats in day_patterns.items():
+                days_data.append({
+                    'Día': day,
+                    'Total Sorteos': stats['total_draws'],
+                    'Números Únicos': stats['unique_numbers'],
+                    'Más Frecuente': stats['most_frequent'],
+                    'Promedio': round(stats['avg_number'], 1)
+                })
+            
+            df_days = pd.DataFrame(days_data)
+            # Orden cronológico para días de la semana
+            day_order = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            df_days['Día'] = pd.Categorical(df_days['Día'], categories=day_order, ordered=True)
+            df_days = df_days.sort_values('Día')
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Gráfico de barras de sorteos por día
+                fig = px.bar(
+                    df_days,
+                    x='Día',
+                    y='Total Sorteos',
+                    title="Total de Sorteos por Día de la Semana",
+                    labels={'Total Sorteos': 'Cantidad de Sorteos'},
+                    category_orders={'Día': day_order}
+                )
+                st.plotly_chart(fig, width='stretch')
+            
+            with col2:
+                # Gráfico de números únicos por día
+                fig = px.bar(
+                    df_days,
+                    x='Día',
+                    y='Números Únicos',
+                    title="Números Únicos por Día de la Semana",
+                    labels={'Números Únicos': 'Cantidad de Números Únicos'},
+                    color='Números Únicos',
+                    color_continuous_scale='Blues',
+                    category_orders={'Día': day_order}
+                )
+                st.plotly_chart(fig, width='stretch')
+            
+            # Tabla resumen
+            st.dataframe(df_days, width='stretch')
+        
+        # Análisis mensual
+        st.subheader("📆 Patrones por Mes del Año")
+        
+        monthly_patterns = analyzer.analyze_monthly_patterns(days=days_to_analyze)
+        
+        if monthly_patterns:
+            months_data = []
+            for month, stats in monthly_patterns.items():
+                months_data.append({
+                    'Mes': month,
+                    'Total Sorteos': stats['total_draws'],
+                    'Números Únicos': stats['unique_numbers'],
+                    'Más Frecuente': stats['most_frequent'],
+                    'Promedio': round(stats['avg_number'], 1)
+                })
+            
+            df_months = pd.DataFrame(months_data)
+            
+            if len(df_months) > 0:
+                # Orden cronológico para meses
+                spanish_month_order = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                df_months['Mes'] = pd.Categorical(df_months['Mes'], categories=spanish_month_order, ordered=True)
+                df_months = df_months.sort_values('Mes')
+                
+                # Gráfico de sorteos por mes
+                fig = px.bar(
+                    df_months,
+                    x='Mes',
+                    y='Total Sorteos',
+                    title="Distribución de Sorteos por Mes",
+                    labels={'Total Sorteos': 'Cantidad de Sorteos'},
+                    category_orders={'Mes': spanish_month_order}
+                )
+                fig.update_xaxes(tickangle=45)
+                st.plotly_chart(fig, width='stretch')
+                
+                st.dataframe(df_months, width='stretch')
+        
+        # Tendencias EWMA
+        st.subheader("📈 Tendencias EWMA (Promedio Móvil Exponencial)")
+        
+        st.info("""
+        **¿Qué es EWMA?**
+        El Promedio Móvil Exponencial da más peso a las observaciones recientes, 
+        permitiendo detectar tendencias emergentes en la frecuencia de números.
+        """)
+        
+        ewma_trends = analyzer.calculate_ewma_trends(days=days_to_analyze)
+        
+        if ewma_trends:
+            # Ordenar por tendencia
+            sorted_trends = sorted(ewma_trends.items(), key=lambda x: x[1], reverse=True)
+            
+            # Top 15 tendencias más altas
+            top_trends = sorted_trends[:15]
+            
+            trends_data = []
+            for number, trend in top_trends:
+                trends_data.append({
+                    'Número': number,
+                    'Tendencia EWMA': round(trend, 3),
+                    'Clasificación': 'Alta' if trend > np.mean(list(ewma_trends.values())) else 'Normal'
+                })
+            
+            df_trends = pd.DataFrame(trends_data)
+            
+            # Gráfico de tendencias
+            fig = px.bar(
+                df_trends,
+                x='Número',
+                y='Tendencia EWMA',
+                title="Top 15 Números con Mayor Tendencia EWMA",
+                labels={'Tendencia EWMA': 'Valor de Tendencia'},
+                color='Tendencia EWMA',
+                color_continuous_scale='Viridis'
+            )
+            st.plotly_chart(fig, width='stretch')
+            
+            st.dataframe(df_trends, width='stretch')
+        
+        # Detección de cambios significativos
+        st.subheader("🔍 Cambios Significativos en Frecuencias")
+        
+        st.info("""
+        **Análisis de Cambios:**
+        Detecta números que han experimentado cambios significativos en su frecuencia 
+        comparando el período reciente con el período anterior.
+        """)
+        
+        frequency_changes = analyzer.detect_frequency_changes(days=days_to_analyze)
+        
+        if frequency_changes:
+            changes_data = []
+            for change in frequency_changes[:15]:  # Top 15 cambios
+                changes_data.append({
+                    'Número': change['number'],
+                    'Tipo de Cambio': change['change_type'],
+                    'Cambio %': f"{change['change_ratio']:.1%}",
+                    'Freq. Reciente': change['recent_frequency'],
+                    'Freq. Anterior': change['previous_frequency'],
+                    'Significancia': round(change['significance'], 3)
+                })
+            
+            df_changes = pd.DataFrame(changes_data)
+            
+            # Separar incrementos y disminuciones
+            incrementos = df_changes[df_changes['Tipo de Cambio'] == 'Incremento']
+            disminuciones = df_changes[df_changes['Tipo de Cambio'] == 'Disminución']
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if len(incrementos) > 0:
+                    st.subheader("⬆️ Mayores Incrementos")
+                    st.dataframe(incrementos.head(10), width='stretch')
+            
+            with col2:
+                if len(disminuciones) > 0:
+                    st.subheader("⬇️ Mayores Disminuciones")
+                    st.dataframe(disminuciones.head(10), width='stretch')
+            
+            # Gráfico de cambios
+            if len(df_changes) > 0:
+                fig = px.scatter(
+                    df_changes,
+                    x='Freq. Anterior',
+                    y='Freq. Reciente',
+                    size='Significancia',
+                    color='Tipo de Cambio',
+                    hover_name='Número',
+                    title="Cambios en Frecuencias: Anterior vs Reciente",
+                    labels={
+                        'Freq. Anterior': 'Frecuencia Período Anterior',
+                        'Freq. Reciente': 'Frecuencia Período Reciente'
+                    }
+                )
+                # Línea diagonal para referencia (sin cambio)
+                max_val = max(df_changes['Freq. Anterior'].max(), df_changes['Freq. Reciente'].max())
+                fig.add_shape(
+                    type="line",
+                    x0=0, y0=0, x1=max_val, y1=max_val,
+                    line=dict(color="gray", dash="dash")
+                )
+                st.plotly_chart(fig, width='stretch')
+        else:
+            st.info("No se detectaron cambios significativos en las frecuencias en este período.")
+    
+    else:
+        st.warning("⚠️ Se requieren datos históricos para el análisis temporal.")
 
 # Footer
 st.markdown("---")
