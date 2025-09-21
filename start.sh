@@ -21,6 +21,7 @@ base = "light"
 EOF
 
 # Ejecutar la aplicación Streamlit
-# Usar puerto de entorno o default 5000
+# Usar puerto de entorno de Render o default 5000 
 PORT=${PORT:-5000}
+echo "Iniciando Streamlit en puerto $PORT"
 streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true

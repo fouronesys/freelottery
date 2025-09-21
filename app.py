@@ -984,72 +984,134 @@ with tab7:
         
         st.divider()
         
-        # Análisis por día del mes
-        st.subheader("📊 Análisis por Día del Mes")
+        # Análisis por día del mes específico
+        st.subheader("📊 Análisis Específico por Día del Mes")
         
-        if st.button("📈 Mostrar Patrones por Día del Mes", key="month_patterns"):
-            with st.spinner("Analizando patrones por día del mes..."):
-                month_patterns = analyzer.analyze_day_of_month_patterns(days=365)
+        # Selector de día del mes y período
+        col_day, col_period = st.columns(2)
+        
+        with col_day:
+            selected_day_month = st.selectbox(
+                "Selecciona día del mes",
+                list(range(1, 32)),
+                index=datetime.now().day - 1,
+                help="Día del mes para análisis específico (1-31)"
+            )
+        
+        with col_period:
+            month_analysis_period = st.selectbox(
+                "Período de análisis (días del mes)",
+                [180, 365, 720],
+                index=1,
+                help="Días históricos para el análisis por día del mes"
+            )
+        
+        if st.button("📈 Analizar Día del Mes Específico", key="specific_month_day"):
+            with st.spinner(f"Analizando patrones para el día {selected_day_month} del mes..."):
+                month_patterns = analyzer.analyze_day_of_month_patterns(days=month_analysis_period)
                 
                 if month_patterns and 'day_statistics' in month_patterns:
-                    # Resumen general
+                    day_stats = month_patterns['day_statistics']
+                    best_numbers_by_day = month_patterns['best_numbers_by_day']
+                    
+                    if selected_day_month in day_stats:
+                        stats = day_stats[selected_day_month]
+                        best_nums = best_numbers_by_day.get(selected_day_month, [])
+                        
+                        # Métricas del día específico
+                        st.success(f"✅ Análisis completado para el día {selected_day_month}")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric("Total Sorteos", stats['total_draws'])
+                        
+                        with col2:
+                            st.metric("Números Únicos", stats['unique_numbers'])
+                        
+                        with col3:
+                            st.metric("Número Más Frecuente", stats['most_frequent_number'])
+                        
+                        with col4:
+                            st.metric("Promedio", f"{stats['avg_number']:.1f}")
+                        
+                        # Top números recomendados para este día
+                        if best_nums:
+                            st.subheader(f"🏅 Top 5 Números para el Día {selected_day_month}")
+                            
+                            cols = st.columns(5)
+                            for i, num in enumerate(best_nums[:5]):
+                                with cols[i]:
+                                    freq_count = stats['frequency_distribution'].get(num, 0)
+                                    st.metric(
+                                        label=f"#{i+1}",
+                                        value=str(num),
+                                        delta=f"{freq_count} veces",
+                                        help=f"Apareció {freq_count} veces en día {selected_day_month}"
+                                    )
+                            
+                            # Gráfico de frecuencias del día específico
+                            if stats['frequency_distribution']:
+                                freq_data = []
+                                for num, count in list(stats['frequency_distribution'].most_common(15)):
+                                    freq_data.append({'Número': num, 'Frecuencia': count})
+                                
+                                if freq_data:
+                                    df_freq = pd.DataFrame(freq_data)
+                                    fig = px.bar(
+                                        df_freq,
+                                        x='Número',
+                                        y='Frecuencia',
+                                        title=f"Frecuencia de Números - Día {selected_day_month} del Mes",
+                                        color='Frecuencia',
+                                        color_continuous_scale='viridis'
+                                    )
+                                    st.plotly_chart(fig, width='stretch')
+                        
+                        # Recomendación específica
+                        confidence = 'Alta' if stats['total_draws'] >= 10 else 'Media' if stats['total_draws'] >= 5 else 'Baja'
+                        st.info(f"**Recomendación para día {selected_day_month}:** {', '.join(map(str, best_nums[:3]))} | Confianza: {confidence} | Basado en {stats['total_draws']} sorteos históricos")
+                    
+                    else:
+                        st.warning(f"No hay datos suficientes para el día {selected_day_month} del mes en el período seleccionado.")
+                        
+                    # Resumen general de todos los días
                     summary = month_patterns['analysis_summary']
                     
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    with col1:
-                        st.metric("Días Analizados", summary['days_analyzed'])
-                    
-                    with col2:
-                        st.metric("Días con Datos", summary['total_days_with_data'])
-                    
-                    with col3:
-                        if summary['most_active_day']:
-                            st.metric("Día Más Activo", f"Día {summary['most_active_day']}")
-                    
-                    with col4:
-                        if summary['least_active_day']:
-                            st.metric("Día Menos Activo", f"Día {summary['least_active_day']}")
-                    
-                    # Recomendación para hoy
-                    today_rec = month_patterns['today_recommendation']
-                    if today_rec['recommended_numbers']:
-                        st.success(f"**Para el día {today_rec['day']} (HOY):** Números recomendados: {', '.join(map(str, today_rec['recommended_numbers']))} | Confianza: {today_rec['confidence_level']}")
-                    
-                    # Tabla de mejores números por día del mes
-                    st.subheader("📅 Mejores Números por Día del Mes")
-                    
-                    # Crear datos para tabla
-                    table_data = []
-                    best_numbers_by_day = month_patterns['best_numbers_by_day']
-                    day_stats = month_patterns['day_statistics']
-                    
-                    for day in range(1, 32):
-                        if day in best_numbers_by_day and day in day_stats:
-                            top_3 = best_numbers_by_day[day][:3]
-                            stats = day_stats[day]
-                            table_data.append({
-                                'Día del Mes': day,
-                                'Top 3 Números': ', '.join(map(str, top_3)),
-                                'Más Frecuente': stats['most_frequent_number'],
-                                'Total Sorteos': stats['total_draws'],
-                                'Promedio': stats['avg_number']
-                            })
-                    
-                    if table_data:
-                        df_month = pd.DataFrame(table_data)
-                        st.dataframe(df_month, width='stretch')
+                    with st.expander("📊 Resumen General - Todos los Días del Mes"):
+                        col1, col2, col3, col4 = st.columns(4)
                         
-                        # Gráfico de actividad por día del mes
-                        fig = px.bar(
-                            df_month,
-                            x='Día del Mes',
-                            y='Total Sorteos',
-                            title="Actividad de Sorteos por Día del Mes",
-                            color='Total Sorteos',
-                            color_continuous_scale='viridis'
-                        )
-                        st.plotly_chart(fig, width='stretch')
+                        with col1:
+                            st.metric("Días Analizados", summary['days_analyzed'])
+                        
+                        with col2:
+                            st.metric("Días con Datos", summary['total_days_with_data'])
+                        
+                        with col3:
+                            if summary['most_active_day']:
+                                st.metric("Día Más Activo", f"Día {summary['most_active_day']}")
+                        
+                        with col4:
+                            if summary['least_active_day']:
+                                st.metric("Día Menos Activo", f"Día {summary['least_active_day']}")
+                        
+                        # Tabla completa de todos los días
+                        table_data = []
+                        for day in range(1, 32):
+                            if day in best_numbers_by_day and day in day_stats:
+                                top_3 = best_numbers_by_day[day][:3]
+                                stats_day = day_stats[day]
+                                table_data.append({
+                                    'Día del Mes': day,
+                                    'Top 3 Números': ', '.join(map(str, top_3)),
+                                    'Más Frecuente': stats_day['most_frequent_number'],
+                                    'Total Sorteos': stats_day['total_draws'],
+                                    'Promedio': stats_day['avg_number']
+                                })
+                        
+                        if table_data:
+                            df_month = pd.DataFrame(table_data)
+                            st.dataframe(df_month, width='stretch')
         
         st.divider()
         
