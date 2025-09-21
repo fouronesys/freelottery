@@ -753,7 +753,7 @@ class StatisticalAnalyzer:
         try:
             from scipy import stats
             from statsmodels.stats.diagnostic import acorr_ljungbox
-            from statsmodels.tsa.stattools import durbin_watson
+            from statsmodels.stats.stattools import durbin_watson
             from statsmodels.tsa.stattools import acf, pacf
             
             end_date = datetime.now()

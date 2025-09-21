@@ -232,11 +232,11 @@ with tab2:
             
             # Aplicar ordenamiento
             if sort_by == "Frecuencia Absoluta":
-                df_filtered = df_filtered.sort_values(by='Frecuencia Absoluta', ascending=False)
+                df_filtered = df_filtered.sort_values('Frecuencia Absoluta', ascending=False)
             elif sort_by == "Número":
-                df_filtered = df_filtered.sort_values(by='Número', ascending=True)
+                df_filtered = df_filtered.sort_values('Número', ascending=True)
             else:
-                df_filtered = df_filtered.sort_values(by='Frecuencia_Relativa_Num', ascending=False)
+                df_filtered = df_filtered.sort_values('Frecuencia_Relativa_Num', ascending=False)
             
             # Remover columna numérica auxiliar para mostrar
             df_filtered = df_filtered.drop('Frecuencia_Relativa_Num', axis=1)
@@ -1196,7 +1196,7 @@ with tab8:
                 with st.spinner("Analizando autocorrelación..."):
                     autocorr_results = analyzer.analyze_autocorrelation(days=complex_analysis_days)
                     
-                    if autocorr_results:
+                    if isinstance(autocorr_results, dict) and 'error' not in autocorr_results and autocorr_results:
                         st.subheader("📈 Análisis de Autocorrelación")
                         
                         col1, col2 = st.columns(2)
@@ -1227,6 +1227,8 @@ with tab8:
                         if autocorr_results['significant_lags']:
                             st.info(f"Lags significativos detectados: {', '.join(map(str, autocorr_results['significant_lags']))}")
                     
+                    elif isinstance(autocorr_results, dict) and 'error' in autocorr_results:
+                        st.error(f"Error en análisis de autocorrelación: {autocorr_results['error']}")
                     else:
                         st.warning("No se pudo realizar el análisis de autocorrelación.")
             
