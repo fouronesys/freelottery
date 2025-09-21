@@ -79,13 +79,14 @@ prediction_method = st.sidebar.selectbox(
 )
 
 # Pestañas principales
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📈 Dashboard Principal",
     "🔢 Análisis de Números",
     "🎯 Predicciones",
     "📊 Estadísticas Avanzadas",
     "⏰ Análisis Temporal",
-    "🤝 Co-ocurrencia y Patrones"
+    "🤝 Co-ocurrencia y Patrones",
+    "📅 Recomendaciones por Día"
 ])
 
 with tab1:
@@ -213,7 +214,7 @@ with tab2:
             if sort_by == "Frecuencia Absoluta":
                 df_filtered = df_filtered.sort_values(by='Frecuencia Absoluta', ascending=False)
             elif sort_by == "Número":
-                df_filtered = df_filtered.sort_values(by='Número')
+                df_filtered = df_filtered.sort_values(by='Número', ascending=True)
             else:
                 df_filtered = df_filtered.sort_values(by='Frecuencia_Relativa_Num', ascending=False)
             
@@ -834,6 +835,235 @@ with tab6:
     
     else:
         st.warning("⚠️ Se requieren datos históricos para el análisis de co-ocurrencia y patrones.")
+
+with tab7:
+    st.header("📅 Recomendaciones Inteligentes por Día")
+    st.write("Sistema de recomendaciones que combina múltiples análisis para sugerir números según el día de la semana seleccionado.")
+    
+    if total_draws > 0:
+        # Selector de día
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            target_day = st.selectbox(
+                "Selecciona el día de la semana",
+                ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+                help="Día para el cual generar recomendaciones"
+            )
+        
+        with col2:
+            recommendation_period = st.selectbox(
+                "Período de análisis",
+                [90, 180, 365, 720],
+                index=2,
+                help="Días históricos para el análisis"
+            )
+        
+        with col3:
+            num_recommendations = st.slider(
+                "Número de recomendaciones",
+                min_value=5,
+                max_value=20,
+                value=10,
+                help="Cantidad de números a recomendar"
+            )
+        
+        if st.button("🎯 Generar Recomendaciones Inteligentes", type="primary"):
+            with st.spinner("Analizando patrones y generando recomendaciones..."):
+                
+                # 1. Análisis por día de la semana
+                day_patterns = analyzer.analyze_day_of_week_patterns(days=recommendation_period)
+                day_specific_numbers = []
+                
+                if target_day in day_patterns:
+                    day_stats = day_patterns[target_day]
+                    if 'top_numbers' in day_stats:
+                        day_specific_numbers = day_stats['top_numbers'][:10]
+                
+                # 2. Análisis de tendencias EWMA
+                ewma_trends = analyzer.calculate_ewma_trends(days=recommendation_period)
+                trending_numbers = []
+                if ewma_trends:
+                    sorted_trends = sorted(ewma_trends.items(), key=lambda x: x[1], reverse=True)
+                    trending_numbers = [num for num, trend in sorted_trends[:15] if trend > 0]
+                
+                # 3. Análisis de co-ocurrencia para números calientes
+                hot_numbers = analyzer.get_hot_numbers(days=60, limit=5)
+                hot_nums = [num for num, _, _ in hot_numbers] if hot_numbers else []
+                
+                cooccurrence_recommendations = []
+                if hot_nums:
+                    cooccurrences = analyzer.analyze_number_cooccurrence(days=recommendation_period)
+                    for hot_num in hot_nums:
+                        if hot_num in cooccurrences:
+                            partners = cooccurrences[hot_num]
+                            # Obtener los mejores compañeros del número caliente
+                            best_partners = sorted(partners.items(), key=lambda x: x[1], reverse=True)[:3]
+                            cooccurrence_recommendations.extend([partner for partner, _ in best_partners])
+                
+                # 4. Análisis de frecuencia general 
+                frequency_data = analyzer.calculate_all_frequencies(days=recommendation_period)
+                balanced_numbers = []
+                if frequency_data:
+                    # Números con clasificación "Normal" y "Caliente" 
+                    for num, freq, rel_freq, classification in frequency_data:
+                        if classification in ["Normal", "Caliente"]:
+                            balanced_numbers.append((num, freq, rel_freq))
+                    balanced_numbers = sorted(balanced_numbers, key=lambda x: x[2], reverse=True)[:10]
+                    balanced_numbers = [num for num, _, _ in balanced_numbers]
+                
+                # 5. Combinar todas las recomendaciones con sistema de puntuación
+                recommendation_scores = {}
+                
+                # Puntuación por análisis específico del día (peso alto)
+                for i, num in enumerate(day_specific_numbers):
+                    recommendation_scores[num] = recommendation_scores.get(num, 0) + (50 - i * 2)
+                
+                # Puntuación por tendencias EWMA (peso medio-alto)
+                for i, num in enumerate(trending_numbers):
+                    recommendation_scores[num] = recommendation_scores.get(num, 0) + (30 - i)
+                
+                # Puntuación por co-ocurrencia (peso medio)
+                for num in cooccurrence_recommendations:
+                    recommendation_scores[num] = recommendation_scores.get(num, 0) + 15
+                
+                # Puntuación por frecuencia balanceada (peso bajo)
+                for i, num in enumerate(balanced_numbers):
+                    recommendation_scores[num] = recommendation_scores.get(num, 0) + (10 - i)
+                
+                # Ordenar por puntuación y seleccionar los mejores
+                if recommendation_scores:
+                    sorted_recommendations = sorted(recommendation_scores.items(), key=lambda x: x[1], reverse=True)
+                    final_recommendations = sorted_recommendations[:num_recommendations]
+                    
+                    # Mostrar resultados
+                    st.success(f"✅ Recomendaciones generadas para {target_day}")
+                    
+                    # Panel de recomendaciones principales
+                    st.subheader("🏆 Números Recomendados")
+                    
+                    # Mostrar en formato de cards
+                    cols = st.columns(5)
+                    # Calcular max_score una vez para todas las recomendaciones
+                    max_score = max([s for _, s in final_recommendations]) if final_recommendations else 1
+                    
+                    for i, (number, score) in enumerate(final_recommendations[:10]):
+                        with cols[i % 5]:
+                            # Calcular confianza basada en la puntuación
+                            confidence = (score / max_score) * 100
+                            
+                            st.metric(
+                                label=f"#{i+1}",
+                                value=str(number),
+                                delta=f"{confidence:.0f}% confianza",
+                                help=f"Puntuación: {score}"
+                            )
+                    
+                    # Tabla detallada con análisis
+                    st.subheader("📊 Análisis Detallado de Recomendaciones")
+                    
+                    detailed_data = []
+                    for number, score in final_recommendations:
+                        # Determinar fuentes de la recomendación
+                        sources = []
+                        if number in [n for n, _, _ in hot_numbers] if hot_numbers else []:
+                            sources.append("🔥 Número Caliente")
+                        if number in day_specific_numbers:
+                            sources.append(f"📅 Específico de {target_day}")
+                        if number in trending_numbers:
+                            sources.append("📈 Tendencia EWMA")
+                        if number in cooccurrence_recommendations:
+                            sources.append("🤝 Co-ocurrencia")
+                        if number in balanced_numbers:
+                            sources.append("⚖️ Frecuencia Balanceada")
+                        
+                        # Obtener frecuencia actual
+                        freq_abs, freq_rel = db.get_number_frequency(number, days=60)
+                        
+                        detailed_data.append({
+                            'Número': number,
+                            'Puntuación': score,
+                            'Confianza': f"{(score / max_score) * 100:.0f}%",
+                            'Frecuencia (60d)': freq_abs,
+                            'Fuentes': " | ".join(sources[:3])  # Máximo 3 fuentes
+                        })
+                    
+                    df_detailed = pd.DataFrame(detailed_data)
+                    st.dataframe(df_detailed, width='stretch')
+                    
+                    # Gráfico de puntuaciones
+                    fig = px.bar(
+                        df_detailed.head(15),
+                        x='Número',
+                        y='Puntuación',
+                        title="Puntuación de Recomendaciones",
+                        labels={'Puntuación': 'Puntuación Total'},
+                        color='Puntuación',
+                        color_continuous_scale='viridis'
+                    )
+                    st.plotly_chart(fig, width='stretch')
+                    
+                    # Panel de información del método
+                    with st.expander("ℹ️ Metodología de Recomendaciones"):
+                        st.write("""
+                        **Sistema de Puntuación Combinado:**
+                        
+                        1. **Análisis Específico del Día** (peso alto): Números que históricamente salen más en el día seleccionado
+                        2. **Tendencias EWMA** (peso medio-alto): Números con tendencia creciente según promedio móvil exponencial
+                        3. **Co-ocurrencia** (peso medio): Números que frecuentemente aparecen junto a números calientes actuales
+                        4. **Frecuencia Balanceada** (peso bajo): Números con frecuencia normal/caliente para equilibrio
+                        
+                        **Ventajas del Sistema:**
+                        - ✅ Combina múltiples análisis estadísticos
+                        - ✅ Considera patrones específicos por día de la semana
+                        - ✅ Incluye análisis de tendencias recientes
+                        - ✅ Balancea números calientes y normales
+                        
+                        **Nota:** Las recomendaciones son sugerencias basadas en análisis histórico y no garantizan resultados.
+                        """)
+                    
+                else:
+                    st.warning("No se pudieron generar recomendaciones con los datos disponibles.")
+        
+        # Estadísticas del día seleccionado
+        st.subheader(f"📊 Estadísticas Históricas para {target_day}")
+        
+        day_patterns = analyzer.analyze_day_of_week_patterns(days=recommendation_period)
+        if target_day in day_patterns:
+            day_stats = day_patterns[target_day]
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric(
+                    "Total de Sorteos",
+                    day_stats['total_draws'],
+                    help=f"Sorteos realizados en {target_day} durante los últimos {recommendation_period} días"
+                )
+            
+            with col2:
+                st.metric(
+                    "Números Únicos",
+                    day_stats['unique_numbers'],
+                    help="Cantidad de números diferentes que han salido"
+                )
+            
+            with col3:
+                st.metric(
+                    "Más Frecuente",
+                    day_stats['most_frequent'],
+                    help="Número que más veces ha salido en este día"
+                )
+            
+            with col4:
+                st.metric(
+                    "Promedio",
+                    f"{day_stats['avg_number']:.1f}",
+                    help="Promedio de los números que salen en este día"
+                )
+        
+    else:
+        st.warning("⚠️ Se requieren datos históricos para generar recomendaciones por día.")
 
 # Footer
 st.markdown("---")
