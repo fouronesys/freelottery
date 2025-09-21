@@ -137,7 +137,7 @@ with tab1:
         
         hot_numbers = analyzer.get_hot_numbers(days=30, limit=10)
         if hot_numbers:
-            df_hot = pd.DataFrame(hot_numbers, columns=['Número', 'Frecuencia', 'Frecuencia Relativa'])
+            df_hot = pd.DataFrame.from_records(hot_numbers, columns=['Número', 'Frecuencia', 'Frecuencia Relativa'])
             
             fig = px.bar(
                 df_hot,
@@ -156,7 +156,7 @@ with tab1:
         
         cold_numbers = analyzer.get_cold_numbers(days=30, limit=10)
         if cold_numbers:
-            df_cold = pd.DataFrame(cold_numbers, columns=['Número', 'Frecuencia', 'Frecuencia Relativa'])
+            df_cold = pd.DataFrame.from_records(cold_numbers, columns=['Número', 'Frecuencia', 'Frecuencia Relativa'])
             
             fig = px.bar(
                 df_cold,
@@ -180,10 +180,9 @@ with tab2:
         all_frequencies = analyzer.calculate_all_frequencies(days=days_to_analyze)
         
         if all_frequencies:
-            df_freq = pd.DataFrame(all_frequencies, columns=[
-                'Número', 'Frecuencia Absoluta', 'Frecuencia Relativa', 'Clasificación'
-            ])
-            df_freq['Frecuencia Relativa'] = df_freq['Frecuencia Relativa'].apply(lambda x: f"{x:.2%}")
+            df_freq = pd.DataFrame.from_records(all_frequencies, columns=['Número', 'Frecuencia Absoluta', 'Frecuencia_Relativa_Num', 'Clasificación'])
+            # Crear columna formateada para mostrar
+            df_freq['Frecuencia Relativa'] = df_freq['Frecuencia_Relativa_Num'].apply(lambda x: f"{x:.2%}")
             
             st.subheader(f"📋 Tabla de Frecuencias ({days_to_analyze} días)")
             
@@ -209,11 +208,14 @@ with tab2:
             
             # Aplicar ordenamiento
             if sort_by == "Frecuencia Absoluta":
-                df_filtered = df_filtered.sort_values('Frecuencia Absoluta', ascending=False)
+                df_filtered = df_filtered.sort_values(by='Frecuencia Absoluta', ascending=False)
             elif sort_by == "Número":
-                df_filtered = df_filtered.sort_values('Número')
+                df_filtered = df_filtered.sort_values(by='Número')
             else:
-                df_filtered = df_filtered.sort_values('Frecuencia Relativa', ascending=False)
+                df_filtered = df_filtered.sort_values(by='Frecuencia_Relativa_Num', ascending=False)
+            
+            # Remover columna numérica auxiliar para mostrar
+            df_filtered = df_filtered.drop('Frecuencia_Relativa_Num', axis=1)
             
             st.dataframe(df_filtered, use_container_width=True)
             
@@ -234,9 +236,7 @@ with tab2:
             
             range_analysis = analyzer.analyze_by_ranges(days=days_to_analyze)
             if range_analysis:
-                df_ranges = pd.DataFrame(range_analysis, columns=[
-                    'Rango', 'Frecuencia Promedio', 'Números en Rango'
-                ])
+                df_ranges = pd.DataFrame.from_records(range_analysis, columns=['Rango', 'Frecuencia Promedio', 'Números en Rango'])
                 
                 fig = px.bar(
                     df_ranges,
@@ -289,11 +289,10 @@ with tab3:
                     # Mostrar predicciones
                     st.subheader("🎯 Números Recomendados")
                     
-                    df_pred = pd.DataFrame(predictions, columns=[
-                        'Número', 'Puntuación', 'Confianza', 'Razón'
-                    ])
-                    df_pred['Confianza'] = df_pred['Confianza'].apply(lambda x: f"{x:.1%}")
-                    df_pred['Puntuación'] = df_pred['Puntuación'].apply(lambda x: f"{x:.2f}")
+                    df_pred = pd.DataFrame.from_records(predictions, columns=['Número', 'Puntuación_Num', 'Confianza_Num', 'Razón'])
+                    # Crear columnas formateadas para mostrar
+                    df_pred['Confianza'] = df_pred['Confianza_Num'].apply(lambda x: f"{x:.1%}")
+                    df_pred['Puntuación'] = df_pred['Puntuación_Num'].apply(lambda x: f"{x:.2f}")
                     
                     # Mostrar en formato de cards
                     cols = st.columns(5)
@@ -301,23 +300,25 @@ with tab3:
                         with cols[i % 5]:
                             st.metric(
                                 label=f"#{i+1}",
-                                value=row['Número'],
-                                delta=row['Confianza'],
-                                help=row['Razón']
+                                value=str(row['Número']),
+                                delta=str(row['Confianza']),
+                                help=str(row['Razón'])
                             )
                     
                     # Tabla detallada
                     st.subheader("📋 Detalles de Predicciones")
-                    st.dataframe(df_pred, use_container_width=True)
+                    # Mostrar solo columnas formateadas para la tabla
+                    display_df = df_pred[['Número', 'Puntuación', 'Confianza', 'Razón']]
+                    st.dataframe(display_df, use_container_width=True)
                     
                     # Gráfico de confianza
                     fig = px.bar(
                         df_pred,
                         x='Número',
-                        y='Puntuación',
+                        y='Puntuación_Num',
                         title="Puntuación de Predicciones",
-                        labels={'Puntuación': 'Puntuación de Predicción'},
-                        color='Puntuación',
+                        labels={'Puntuación_Num': 'Puntuación de Predicción'},
+                        color='Puntuación_Num',
                         color_continuous_scale='Viridis'
                     )
                     st.plotly_chart(fig, use_container_width=True)
@@ -329,9 +330,7 @@ with tab3:
         recent_results = db.get_recent_draws(limit=10)
         
         if recent_results:
-            df_recent = pd.DataFrame(recent_results, columns=[
-                'Fecha', 'Número Ganador', 'Posición', 'Premio'
-            ])
+            df_recent = pd.DataFrame.from_records(recent_results, columns=['Fecha', 'Número Ganador', 'Posición', 'Premio'])
             df_recent['Fecha'] = pd.to_datetime(df_recent['Fecha']).dt.strftime('%Y-%m-%d')
             if 'Premio' in df_recent.columns:
                 df_recent['Premio'] = df_recent['Premio'].apply(format_currency)
@@ -373,9 +372,7 @@ with tab4:
             
             # Mostrar top correlaciones
             top_correlations = correlations[:10]  # Top 10 correlaciones
-            df_corr = pd.DataFrame(top_correlations, columns=[
-                'Número 1', 'Número 2', 'Correlación', 'Significancia'
-            ])
+            df_corr = pd.DataFrame.from_records(top_correlations, columns=['Número 1', 'Número 2', 'Correlación', 'Significancia'])
             df_corr['Correlación'] = df_corr['Correlación'].apply(lambda x: f"{x:.3f}")
             
             st.dataframe(df_corr, use_container_width=True)
