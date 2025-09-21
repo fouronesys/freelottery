@@ -163,7 +163,7 @@ class QuinielaScraperManager:
                         text_content = trafilatura.extract(response.text)
                         
                         if text_content:
-                            parsed_results = self._parse_lottery_content(text_content, start_date, end_date)
+                            parsed_results = self._parse_lottery_content(text_content, start_date, end_date, endpoint)
                             if parsed_results:
                                 results.extend(parsed_results)
                                 return results  # Retornar en cuanto encontremos datos válidos
@@ -180,7 +180,7 @@ class QuinielaScraperManager:
         
         return results
     
-    def _parse_lottery_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+    def _parse_lottery_content(self, content: str, start_date: datetime, end_date: datetime, source_url: str = "") -> List[Dict[str, Any]]:
         """
         Parsea el contenido extraído buscando resultados de lotería de las páginas específicas
         """
@@ -190,11 +190,14 @@ class QuinielaScraperManager:
             return results
         
         try:
-            # Determinar el tipo de sitio y usar lógica específica
-            if 'loteka.com.do' in content.lower() or 'quiniela' in content.lower():
+            # Determinar el tipo de sitio basado en la URL de origen
+            if 'loteka.com.do' in source_url.lower():
                 results.extend(self._parse_loteka_content(content, start_date, end_date))
-            
-            if 'loteriasdominicanas.com' in content.lower() or 'quiniela loteka' in content.lower():
+            elif 'loteriasdominicanas.com' in source_url.lower():
+                results.extend(self._parse_loteriasdominicanas_content(content, start_date, end_date))
+            else:
+                # Si no se reconoce la URL, intentar ambos parsers
+                results.extend(self._parse_loteka_content(content, start_date, end_date))
                 results.extend(self._parse_loteriasdominicanas_content(content, start_date, end_date))
             
             # Si no se encontraron resultados específicos, usar parsing genérico
