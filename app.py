@@ -1877,28 +1877,24 @@ with tab8:
 with tab9:
     st.header("📩 Mis Predicciones y Notificaciones")
     
-    # Sistema de identificación de usuario
-    st.subheader("👤 Identificación de Usuario")
+    # Sistema de identificación automática de usuario
+    st.subheader("👤 Sistema de Notificaciones Automático")
     
-    # Usar session state para mantener el user_id
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = ""
+    # Obtener ID de usuario automático
+    user_id = get_or_create_user_id()
     
-    user_id = st.text_input(
-        "Ingresa tu ID de usuario único",
-        value=st.session_state.user_id,
-        help="Usa un identificador único como tu email o nombre de usuario para asociar tus predicciones",
-        placeholder="ej: usuario@email.com o mi_usuario_123"
-    )
+    # Mostrar información del usuario automático (opcional, para transparencia)
+    with st.expander("ℹ️ Información de tu sesión"):
+        st.info(f"**ID de sesión:** `{user_id}`")
+        if 'user_created_at' in st.session_state:
+            st.info(f"**Sesión iniciada:** {st.session_state.user_created_at}")
+        st.write("🔔 **Sistema automático activo:** Recibirás notificaciones cuando tus números predichos coincidan con los sorteos ganadores.")
     
-    if user_id:
-        st.session_state.user_id = user_id
-        
-        # Obtener notificaciones no leídas
-        unread_count = db.get_unread_notifications_count(user_id)
-        
-        if unread_count > 0:
-            st.warning(f"🔔 Tienes {unread_count} notificación(es) nueva(s)!")
+    # Obtener notificaciones no leídas
+    unread_count = db.get_unread_notifications_count(user_id)
+    
+    if unread_count > 0:
+        st.warning(f"🔔 Tienes {unread_count} notificación(es) nueva(s)!")
         
         # Crear tabs secundarias
         subtab1, subtab2, subtab3 = st.tabs([
