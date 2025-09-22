@@ -527,6 +527,172 @@ class StatisticalAnalyzer:
         except Exception as e:
             print(f"Error analizando patrones de día de la semana: {e}")
             return {}
+
+    def get_weekly_recommendations_by_position(self, days: int = 180) -> Dict[str, Any]:
+        """
+        Genera recomendaciones semanales específicas por posición (1ra, 2da, 3ra)
+        basadas en análisis de patrones históricos por posición
+        """
+        try:
+            # Obtener datos por posición
+            position_data = self.db.get_numbers_by_position(days)
+            
+            if not position_data:
+                return {}
+            
+            # Organizar datos por posición
+            positions = {1: [], 2: [], 3: []}
+            for draw in position_data:
+                position = draw.get('position', 1)
+                if position in positions:
+                    positions[position].append(draw)
+            
+            recommendations = {}
+            position_names = {1: '1ra', 2: '2da', 3: '3ra'}
+            
+            # Analizar cada posición
+            for pos, draws in positions.items():
+                if not draws:
+                    continue
+                
+                # Calcular frecuencias para esta posición
+                frequencies = defaultdict(int)
+                dates = []
+                
+                for draw in draws:
+                    frequencies[draw['number']] += 1
+                    dates.append(draw['date'])
+                
+                # Obtener números más frecuentes para esta posición
+                sorted_frequencies = sorted(frequencies.items(), key=lambda x: x[1], reverse=True)
+                
+                # Calcular estadísticas
+                total_draws = len(draws)
+                numbers = [d['number'] for d in draws]
+                
+                if numbers:
+                    avg_number = statistics.mean(numbers)
+                    
+                    # Obtener tendencia reciente (últimos 30 días)
+                    recent_draws = [d for d in draws if 
+                                  (datetime.now() - datetime.strptime(d['date'], '%Y-%m-%d')).days <= 30]
+                    
+                    recent_frequencies = defaultdict(int)
+                    for draw in recent_draws:
+                        recent_frequencies[draw['number']] += 1
+                    
+                    recent_sorted = sorted(recent_frequencies.items(), key=lambda x: x[1], reverse=True)
+                    
+                    # Obtener top 5 números para esta posición
+                    top_historical = sorted_frequencies[:5]
+                    top_recent = recent_sorted[:5]
+                    
+                    # Combinar recomendaciones (histórico + reciente)
+                    combined_scores = defaultdict(float)
+                    
+                    # Peso histórico
+                    for i, (num, freq) in enumerate(top_historical):
+                        score = (len(top_historical) - i) * 0.6  # 60% peso histórico
+                        combined_scores[num] += score
+                    
+                    # Peso reciente
+                    for i, (num, freq) in enumerate(top_recent):
+                        score = (len(top_recent) - i) * 0.4  # 40% peso reciente
+                        combined_scores[num] += score
+                    
+                    # Ordenar por puntuación combinada
+                    final_recommendations = sorted(combined_scores.items(), key=lambda x: x[1], reverse=True)
+                    
+                    recommendations[position_names[pos]] = {
+                        'position_number': pos,
+                        'total_draws': total_draws,
+                        'avg_number': round(avg_number, 1),
+                        'top_recommendations': final_recommendations[:3],  # Top 3 para esta posición
+                        'historical_top': top_historical[:3],
+                        'recent_top': top_recent[:3],
+                        'confidence': min(100, (total_draws / max(1, days)) * 100)
+                    }
+            
+            # Calcular recomendación semanal integrada
+            weekly_summary = self._generate_weekly_play_strategy(recommendations)
+            
+            return {
+                'by_position': recommendations,
+                'weekly_strategy': weekly_summary,
+                'analysis_period': days,
+                'total_positions': len(recommendations),
+                'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M')
+            }
+            
+        except Exception as e:
+            print(f"Error generando recomendaciones semanales: {e}")
+            return {}
+    
+    def _generate_weekly_play_strategy(self, position_recommendations: Dict) -> Dict[str, Any]:
+        """
+        Genera una estrategia de juego semanal basada en las recomendaciones por posición
+        """
+        try:
+            if not position_recommendations:
+                return {}
+            
+            # Obtener mejor número de cada posición
+            best_by_position = {}
+            for pos_name, data in position_recommendations.items():
+                if data['top_recommendations']:
+                    best_number = data['top_recommendations'][0][0]
+                    confidence = data['confidence']
+                    best_by_position[pos_name] = {
+                        'number': best_number,
+                        'confidence': confidence
+                    }
+            
+            # Generar estrategias de juego
+            strategies = []
+            
+            # Estrategia conservadora - mejores números por posición
+            if len(best_by_position) >= 3:
+                conservative = {
+                    'name': 'Conservadora',
+                    'description': 'Jugar los números más consistentes en cada posición',
+                    'numbers': {
+                        '1ra': best_by_position.get('1ra', {}).get('number', 0),
+                        '2da': best_by_position.get('2da', {}).get('number', 0),
+                        '3ra': best_by_position.get('3ra', {}).get('number', 0)
+                    },
+                    'confidence': sum(data.get('confidence', 0) for data in best_by_position.values()) / len(best_by_position),
+                    'play_type': 'Tripleta específica por posición'
+                }
+                strategies.append(conservative)
+            
+            # Estrategia balanceada - combinar histórico y reciente
+            balanced_numbers = {}
+            for pos_name, data in position_recommendations.items():
+                if len(data['top_recommendations']) >= 2:
+                    # Alternar entre primer y segundo lugar
+                    balanced_numbers[pos_name] = data['top_recommendations'][1][0]
+                elif data['top_recommendations']:
+                    balanced_numbers[pos_name] = data['top_recommendations'][0][0]
+            
+            if len(balanced_numbers) >= 3:
+                balanced = {
+                    'name': 'Balanceada',
+                    'description': 'Combina tendencias históricas y recientes',
+                    'numbers': balanced_numbers,
+                    'confidence': sum(data.get('confidence', 0) for data in position_recommendations.values()) / len(position_recommendations) * 0.85,
+                    'play_type': 'Tripleta balanceada'
+                }
+                strategies.append(balanced)
+            
+            return {
+                'strategies': strategies,
+                'best_single_plays': best_by_position,
+                'recommendation_summary': f"Esta semana se recomienda enfocar en las posiciones con mayor confianza y considerar tanto patrones históricos como tendencias recientes."
+            }
+            
+        except Exception as e:
+            print(f"Error generando estrategia semanal: {e}")
+            return {}
     
     def analyze_day_of_month_patterns(self, days: int = 365) -> Dict[str, Any]:
         """

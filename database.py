@@ -221,6 +221,43 @@ class DatabaseManager:
         except sqlite3.Error:
             return 0
     
+    def get_numbers_by_position(self, days: int = 180) -> List[Dict[str, Any]]:
+        """
+        Obtiene números organizados por posición (1ra, 2da, 3ra)
+        
+        Args:
+            days: Número de días hacia atrás para el análisis
+        
+        Returns:
+            List[Dict]: [{'date': str, 'number': int, 'position': int}, ...]
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cutoff_date = datetime.now() - timedelta(days=days)
+                
+                cursor.execute("""
+                SELECT date, number, position
+                FROM draw_results
+                WHERE date >= ? AND position IS NOT NULL
+                ORDER BY date DESC, position
+                """, (cutoff_date.date(),))
+                
+                results = []
+                for date, number, position in cursor.fetchall():
+                    results.append({
+                        'date': date,
+                        'number': number,
+                        'position': position
+                    })
+                
+                return results
+                
+        except sqlite3.Error as e:
+            print(f"Error obteniendo números por posición: {e}")
+            return []
+
     def get_data_coverage_days(self) -> int:
         """Obtiene el número de días cubiertos por los datos"""
         try:

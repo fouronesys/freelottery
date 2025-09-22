@@ -984,6 +984,134 @@ with tab7:
         
         st.divider()
         
+        # Sección de recomendaciones semanales por posición
+        st.subheader("🗓️ Recomendaciones Semanales por Posición")
+        st.write("Análisis especializado que indica qué números jugar en cada posición (1ra, 2da, 3ra) basado en patrones históricos.")
+        
+        # Selector de período para recomendaciones semanales
+        weekly_analysis_period = st.selectbox(
+            "Período de análisis para recomendaciones semanales (días)",
+            [90, 180, 365],
+            index=1,
+            help="Días históricos para el análisis por posición",
+            key="weekly_period_selector"
+        )
+        
+        if st.button("📊 Generar Recomendaciones Semanales", type="secondary", key="weekly_recommendations"):
+            with st.spinner("Analizando patrones por posición para generar recomendaciones semanales..."):
+                weekly_recs = analyzer.get_weekly_recommendations_by_position(days=weekly_analysis_period)
+                
+                if weekly_recs and 'by_position' in weekly_recs and weekly_recs['by_position']:
+                    st.success(f"✅ Recomendaciones generadas basadas en {weekly_recs.get('analysis_period', weekly_analysis_period)} días de análisis")
+                    
+                    # Mostrar recomendaciones por posición
+                    st.subheader("🎯 Números Recomendados por Posición")
+                    
+                    positions = weekly_recs['by_position']
+                    
+                    if positions:
+                        cols = st.columns(len(positions))
+                        
+                        for i, (pos_name, pos_data) in enumerate(positions.items()):
+                            with cols[i]:
+                                st.write(f"### {pos_name} Posición")
+                                
+                                # Verificar que pos_data tiene la estructura esperada
+                                if pos_data and isinstance(pos_data, dict):
+                                    # Métricas de la posición con valores por defecto
+                                    top_recs = pos_data.get('top_recommendations', [])
+                                    main_number = top_recs[0][0] if top_recs else "N/A"
+                                    
+                                    st.metric(
+                                        "Número Principal", 
+                                        main_number,
+                                        help=f"Número más recomendado para la {pos_name} posición"
+                                    )
+                                    
+                                    confidence = pos_data.get('confidence', 0)
+                                    st.metric(
+                                        "Confianza", 
+                                        f"{confidence:.1f}%",
+                                        help=f"Nivel de confianza basado en {pos_data.get('total_draws', 0)} sorteos"
+                                    )
+                                    
+                                    avg_number = pos_data.get('avg_number', 0)
+                                    st.metric(
+                                        "Promedio Histórico", 
+                                        avg_number,
+                                        help=f"Promedio de números en esta posición"
+                                    )
+                                    
+                                    # Top 3 números recomendados para esta posición
+                                    st.write("**Top 3 Recomendados:**")
+                                    if top_recs:
+                                        for j, (num, score) in enumerate(top_recs[:3]):
+                                            st.write(f"{j+1}. **{num}** (Puntuación: {score:.1f})")
+                                    else:
+                                        st.write("No hay recomendaciones disponibles")
+                                else:
+                                    st.warning(f"No hay datos suficientes para la {pos_name} posición")
+                    
+                    st.divider()
+                    
+                    # Estrategias de juego semanales
+                    if 'weekly_strategy' in weekly_recs and weekly_recs['weekly_strategy']:
+                        strategy = weekly_recs['weekly_strategy']
+                        
+                        st.subheader("🎲 Estrategias de Juego Recomendadas para Esta Semana")
+                        
+                        # Verificar si hay estrategias disponibles
+                        if 'strategies' in strategy and strategy['strategies']:
+                            for strat in strategy['strategies']:
+                                strat_name = strat.get('name', 'Desconocida')
+                                strat_desc = strat.get('description', 'Sin descripción')
+                                strat_confidence = strat.get('confidence', 0)
+                                strat_type = strat.get('play_type', 'N/A')
+                                strat_numbers = strat.get('numbers', {})
+                                
+                                if strat_name == 'Conservadora':
+                                    st.success(f"""
+                                    **🛡️ Estrategia {strat_name}**: {strat_desc}
+                                    
+                                    **Números a jugar:**
+                                    - 1ra posición: **{strat_numbers.get('1ra', 'N/A')}**
+                                    - 2da posición: **{strat_numbers.get('2da', 'N/A')}**
+                                    - 3ra posición: **{strat_numbers.get('3ra', 'N/A')}**
+                                    
+                                    **Confianza:** {strat_confidence:.1f}% | **Tipo:** {strat_type}
+                                    """)
+                                elif strat_name == 'Balanceada':
+                                    st.info(f"""
+                                    **⚖️ Estrategia {strat_name}**: {strat_desc}
+                                    
+                                    **Números a jugar:**
+                                    - 1ra posición: **{strat_numbers.get('1ra', 'N/A')}**
+                                    - 2da posición: **{strat_numbers.get('2da', 'N/A')}**
+                                    - 3ra posición: **{strat_numbers.get('3ra', 'N/A')}**
+                                    
+                                    **Confianza:** {strat_confidence:.1f}% | **Tipo:** {strat_type}
+                                    """)
+                        else:
+                            st.info("No se pudieron generar estrategias específicas con los datos disponibles.")
+                        
+                        # Resumen de recomendación
+                        st.write("**💡 Resumen de Recomendación:**")
+                        st.write(strategy.get('recommendation_summary', 'Estrategias basadas en análisis histórico y tendencias recientes.'))
+                        
+                        # Información adicional
+                        with st.expander("📋 Detalles del Análisis"):
+                            st.write(f"**Período analizado:** {weekly_recs.get('analysis_period', weekly_analysis_period)} días")
+                            st.write(f"**Posiciones analizadas:** {weekly_recs.get('total_positions', 0)}")
+                            st.write(f"**Generado:** {weekly_recs.get('generated_at', 'Fecha no disponible')}")
+                            st.write("**Metodología:** Este análisis examina los patrones históricos específicos por posición para identificar números que tienden a salir más frecuentemente en cada posición (1ra, 2da, 3ra). Combina datos históricos (60%) con tendencias recientes (40%) para generar recomendaciones balanceadas.")
+                    else:
+                        st.info("Estrategias de juego no disponibles. Es posible que se necesiten más datos históricos para generar estrategias completas.")
+                
+                else:
+                    st.warning("⚠️ No se pudieron generar recomendaciones semanales. Verifica que haya suficientes datos históricos.")
+        
+        st.divider()
+        
         # Análisis por día del mes específico
         st.subheader("📊 Análisis Específico por Día del Mes")
         
