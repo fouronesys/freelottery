@@ -713,7 +713,7 @@ class DatabaseManager:
                 WHERE user_id = ?
                 """
                 
-                params = [user_id]
+                params: List[Any] = [user_id]
                 
                 if unread_only:
                     query += " AND is_read = 0"

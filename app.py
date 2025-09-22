@@ -1845,7 +1845,8 @@ with tab9:
                         min_value=5,
                         max_value=20,
                         value=10,
-                        help="Número de predicciones a generar y guardar"
+                        help="Número de predicciones a generar y guardar",
+                        key="save_num_predictions_slider"
                     )
                 
                 with col2:
@@ -1854,7 +1855,8 @@ with tab9:
                         min_value=50,
                         max_value=95,
                         value=70,
-                        help="Nivel mínimo de confianza para las predicciones"
+                        help="Nivel mínimo de confianza para las predicciones",
+                        key="save_confidence_threshold_slider"
                     )
                 
                 # Área para notas del usuario
