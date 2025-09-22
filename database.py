@@ -915,6 +915,84 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error verificando coincidencias para nuevo sorteo: {e}")
     
+    def get_successful_predictions_summary(self, user_id: str) -> Dict[str, Any]:
+        """
+        Obtiene un resumen de las predicciones exitosas del usuario
+        
+        Args:
+            user_id: Identificador del usuario
+            
+        Returns:
+            Dict: Resumen de predicciones exitosas con estadísticas
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                # Obtener predicciones con notificaciones (exitosas)
+                cursor.execute("""
+                SELECT DISTINCT p.id, p.predicted_numbers, p.prediction_method, 
+                       p.confidence_threshold, p.prediction_date, p.notes,
+                       COUNT(n.id) as match_count,
+                       GROUP_CONCAT(n.winning_number || '(' || n.winning_position || ')') as winning_details
+                FROM user_predictions p
+                INNER JOIN notifications n ON p.id = n.prediction_id AND n.user_id = p.user_id
+                WHERE p.user_id = ?
+                GROUP BY p.id
+                ORDER BY p.prediction_date DESC
+                """, (user_id,))
+                
+                successful_predictions = []
+                total_matches = 0
+                
+                for row in cursor.fetchall():
+                    numbers_list = [int(x.strip()) for x in row[1].split(',') if x.strip()]
+                    match_count = row[6]
+                    total_matches += match_count
+                    
+                    successful_predictions.append({
+                        'id': row[0],
+                        'predicted_numbers': numbers_list,
+                        'prediction_method': row[2],
+                        'confidence_threshold': row[3],
+                        'prediction_date': row[4],
+                        'notes': row[5],
+                        'match_count': match_count,
+                        'winning_details': row[7]
+                    })
+                
+                # Obtener estadísticas generales
+                cursor.execute("""
+                SELECT COUNT(*) FROM user_predictions WHERE user_id = ?
+                """, (user_id,))
+                total_predictions = cursor.fetchone()[0]
+                
+                cursor.execute("""
+                SELECT COUNT(*) FROM notifications WHERE user_id = ?
+                """, (user_id,))
+                total_notifications = cursor.fetchone()[0]
+                
+                return {
+                    'successful_predictions': successful_predictions,
+                    'total_predictions': total_predictions,
+                    'successful_count': len(successful_predictions),
+                    'total_matches': total_matches,
+                    'total_notifications': total_notifications,
+                    'success_rate': (len(successful_predictions) / total_predictions * 100) if total_predictions > 0 else 0
+                }
+                
+        except sqlite3.Error as e:
+            print(f"Error obteniendo resumen de predicciones exitosas: {e}")
+            return {
+                'successful_predictions': [],
+                'total_predictions': 0,
+                'successful_count': 0,
+                'total_matches': 0,
+                'total_notifications': 0,
+                'success_rate': 0
+            }
+    
     def process_recent_draws_for_notifications(self, days: int = 7) -> int:
         """
         Procesa sorteos recientes para crear notificaciones que puedan haberse perdido

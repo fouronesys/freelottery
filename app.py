@@ -1912,7 +1912,114 @@ with tab9:
                 st.warning("⚠️ Se requieren datos históricos para generar predicciones.")
         
         with subtab2:
-            st.subheader("📋 Mis Predicciones Guardadas")
+            st.subheader("📋 Mis Predicciones y Notificaciones")
+            
+            # === SECCIÓN DE NOTIFICACIONES PROMINENTES ===
+            unread_notifications = db.get_user_notifications(user_id, unread_only=True, limit=5)
+            
+            if unread_notifications:
+                st.warning(f"🔔 **¡Tienes {len(unread_notifications)} notificaciones nuevas!**")
+                
+                with st.container():
+                    st.write("**🎉 Últimas coincidencias:**")
+                    for notif in unread_notifications[:3]:  # Mostrar solo las 3 más recientes
+                        col1, col2 = st.columns([8, 2])
+                        with col1:
+                            st.success(f"✨ {notif['notification_message']}")
+                        with col2:
+                            if st.button(f"✅ Marcar leída", key=f"quick_read_{notif['id']}"):
+                                db.mark_notification_as_read(notif['id'])
+                                st.rerun()
+                    
+                    if len(unread_notifications) > 3:
+                        st.info(f"... y {len(unread_notifications) - 3} notificaciones más en la pestaña 'Notificaciones'")
+                
+                st.divider()
+            
+            # === RESUMEN DE PREDICCIONES EXITOSAS ===
+            success_summary = db.get_successful_predictions_summary(user_id)
+            
+            if success_summary['successful_count'] > 0:
+                st.subheader("🏆 Resumen de Predicciones Exitosas")
+                
+                # Métricas principales
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric(
+                        label="Predicciones Exitosas",
+                        value=success_summary['successful_count'],
+                        help="Predicciones que han tenido al menos una coincidencia"
+                    )
+                
+                with col2:
+                    st.metric(
+                        label="Total de Coincidencias",
+                        value=success_summary['total_matches'],
+                        help="Número total de números que han coincidido"
+                    )
+                
+                with col3:
+                    st.metric(
+                        label="Tasa de Éxito",
+                        value=f"{success_summary['success_rate']:.1f}%",
+                        help="Porcentaje de predicciones que han sido exitosas"
+                    )
+                
+                with col4:
+                    st.metric(
+                        label="Total Predicciones",
+                        value=success_summary['total_predictions'],
+                        help="Número total de predicciones realizadas"
+                    )
+                
+                # Lista de predicciones exitosas destacadas
+                st.write("**🎯 Tus Mejores Predicciones:**")
+                
+                for pred in success_summary['successful_predictions'][:3]:
+                    with st.expander(
+                        f"🏆 Predicción #{pred['id']} - {pred['match_count']} coincidencia(s) - {pred['prediction_date'][:10]}",
+                        expanded=False
+                    ):
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.write(f"**Método:** {pred['prediction_method']}")
+                            if pred['confidence_threshold']:
+                                # Normalizar el umbral de confianza si está en escala 0-100
+                                conf_val = pred['confidence_threshold']
+                                if conf_val > 1:
+                                    conf_val = conf_val / 100
+                                st.write(f"**Confianza:** {conf_val:.1%}")
+                            st.write(f"**Números ganadores:** {pred['winning_details']}")
+                        
+                        with col2:
+                            st.write("**Números predichos:**")
+                            # Mostrar números en filas de 5, destacando los ganadores
+                            winning_nums = pred['winning_details'].replace('(1)', '').replace('(2)', '').replace('(3)', '')
+                            winning_list = [int(x) for x in winning_nums.split(',') if x.strip().isdigit()]
+                            
+                            numbers = pred['predicted_numbers']
+                            for j in range(0, len(numbers), 5):
+                                row_numbers = numbers[j:j+5]
+                                display_numbers = []
+                                for num in row_numbers:
+                                    if num in winning_list:
+                                        display_numbers.append(f"🎯**{num}**")
+                                    else:
+                                        display_numbers.append(str(num))
+                                st.write(" | ".join(display_numbers))
+                            
+                            if pred['notes']:
+                                st.caption(f"**Notas:** {pred['notes']}")
+                
+                if len(success_summary['successful_predictions']) > 3:
+                    st.info(f"... y {len(success_summary['successful_predictions']) - 3} predicciones exitosas más en la lista completa")
+                
+                st.divider()
+            
+            # === FILTROS Y LISTA COMPLETA ===
+            st.subheader("📋 Todas mis Predicciones")
             
             # Filtros
             col1, col2 = st.columns(2)
@@ -1972,8 +2079,25 @@ with tab9:
                         
                         if prediction_notifications:
                             st.success(f"🎉 Esta predicción ha tenido {len(prediction_notifications)} coincidencia(s)!")
+                            
+                            # Mostrar detalles de las coincidencias
+                            with st.expander("Ver detalles de coincidencias", expanded=False):
+                                for notif in prediction_notifications:
+                                    col_a, col_b = st.columns([7, 3])
+                                    with col_a:
+                                        st.write(f"🎯 **Número {notif['winning_number']}** - {notif['winning_date']}")
+                                    with col_b:
+                                        positions = {1: "1ra", 2: "2da", 3: "3ra"}
+                                        if notif['winning_position']:
+                                            st.write(f"**{positions.get(notif['winning_position'], 'N/A')} posición**")
+                        else:
+                            st.info("Esta predicción aún no ha tenido coincidencias")
             else:
                 st.info("📝 No tienes predicciones guardadas. Usa la pestaña 'Guardar Predicciones' para crear tu primera predicción.")
+                st.write("**💡 Tip:** Una vez que tengas predicciones guardadas, aquí verás:")
+                st.write("- 🔔 Notificaciones cuando tus números coincidan con sorteos")
+                st.write("- 🏆 Un resumen de tus predicciones más exitosas")
+                st.write("- 📊 Estadísticas de tu tasa de éxito")
         
         with subtab3:
             st.subheader("🔔 Mis Notificaciones")
