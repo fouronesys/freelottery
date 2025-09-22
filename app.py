@@ -5,12 +5,24 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, timedelta
 import time
+import uuid
 
 from database import DatabaseManager
 from scraper import QuinielaScraperManager
 from analyzer import StatisticalAnalyzer
 from predictor import LotteryPredictor
 from utils import format_currency, format_percentage
+
+# Función para generar ID de usuario automático
+def get_or_create_user_id():
+    """Genera o recupera un ID de usuario único automático"""
+    if 'auto_user_id' not in st.session_state:
+        # Generar un ID único basado en UUID
+        unique_id = f"user_{str(uuid.uuid4())[:8]}_{int(time.time())}"
+        st.session_state.auto_user_id = unique_id
+        st.session_state.user_created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    return st.session_state.auto_user_id
 
 # Caching para análisis complejos
 @st.cache_data(ttl=3600)  # Cache por 1 hora
