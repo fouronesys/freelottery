@@ -110,6 +110,54 @@ class DatabaseManager:
                 ON notifications(user_id, prediction_id, winning_number, winning_date, winning_position)
                 """)
                 
+                # Tabla de predicciones del sistema
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS system_predictions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    predicted_numbers TEXT NOT NULL,
+                    prediction_method TEXT,
+                    confidence_threshold REAL,
+                    analysis_days INTEGER,
+                    prediction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT 1,
+                    notes TEXT
+                )
+                """)
+                
+                # Tabla de notificaciones generales del sistema
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS system_notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    prediction_id INTEGER,
+                    winning_number INTEGER NOT NULL,
+                    winning_date DATE NOT NULL,
+                    winning_position INTEGER,
+                    matched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_read BOOLEAN DEFAULT 0,
+                    notification_message TEXT,
+                    success_rate REAL,
+                    FOREIGN KEY (prediction_id) REFERENCES system_predictions (id),
+                    UNIQUE(prediction_id, winning_number, winning_date, winning_position)
+                )
+                """)
+                
+                # Índices para las nuevas tablas del sistema
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_system_predictions_date ON system_predictions(prediction_date)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_system_predictions_active ON system_predictions(is_active)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_system_notifications_date ON system_notifications(matched_at)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_system_notifications_read ON system_notifications(is_read)
+                """)
+                
                 conn.commit()
                 
         except sqlite3.Error as e:
@@ -155,6 +203,7 @@ class DatabaseManager:
                 # Si se insertó un nuevo resultado, verificar coincidencias con predicciones
                 if was_inserted:
                     self._check_new_draw_for_matches(result)
+                    self._check_new_draw_for_system_matches(result)
                 
                 return was_inserted
                 
@@ -1026,4 +1075,402 @@ class DatabaseManager:
             
         except Exception as e:
             print(f"Error procesando sorteos recientes: {e}")
+            return 0
+    
+    # === MÉTODOS PARA PREDICCIONES DEL SISTEMA ===
+    
+    def save_system_prediction(self, predicted_numbers: List[int], 
+                              prediction_method: Optional[str] = None, 
+                              confidence_threshold: Optional[float] = None,
+                              analysis_days: Optional[int] = None, 
+                              notes: Optional[str] = None) -> int:
+        """
+        Guarda una predicción del sistema en la base de datos
+        
+        Args:
+            predicted_numbers: Lista de números predichos
+            prediction_method: Método usado para la predicción
+            confidence_threshold: Umbral de confianza usado
+            analysis_days: Días de análisis usados
+            notes: Notas adicionales
+            
+        Returns:
+            int: ID de la predicción guardada, 0 si hay error
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                # Convertir lista de números a string separado por comas
+                numbers_str = ','.join(map(str, predicted_numbers))
+                
+                cursor.execute("""
+                INSERT INTO system_predictions 
+                (predicted_numbers, prediction_method, confidence_threshold, 
+                 analysis_days, notes)
+                VALUES (?, ?, ?, ?, ?)
+                """, (numbers_str, prediction_method, confidence_threshold, 
+                      analysis_days, notes))
+                
+                conn.commit()
+                prediction_id = cursor.lastrowid or 0
+                
+                if prediction_id > 0:
+                    print(f"✅ Predicción del sistema guardada (ID: {prediction_id})")
+                
+                return prediction_id
+                
+        except sqlite3.Error as e:
+            print(f"Error guardando predicción del sistema: {e}")
+            return 0
+    
+    def get_system_predictions(self, active_only: bool = True, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Obtiene las predicciones del sistema
+        
+        Args:
+            active_only: Si solo obtener predicciones activas
+            limit: Número máximo de predicciones a obtener
+            
+        Returns:
+            List[Dict]: Lista de predicciones del sistema
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                query = """
+                SELECT id, predicted_numbers, prediction_method, confidence_threshold,
+                       analysis_days, prediction_date, is_active, notes
+                FROM system_predictions
+                """
+                
+                params: List[Any] = []
+                
+                if active_only:
+                    query += " WHERE is_active = 1"
+                
+                query += " ORDER BY prediction_date DESC LIMIT ?"
+                params.append(limit)
+                
+                cursor.execute(query, params)
+                
+                results = []
+                for row in cursor.fetchall():
+                    # Convertir string de números de vuelta a lista
+                    numbers_list = [int(x.strip()) for x in row[1].split(',') if x.strip()]
+                    
+                    results.append({
+                        'id': row[0],
+                        'predicted_numbers': numbers_list,
+                        'prediction_method': row[2],
+                        'confidence_threshold': row[3],
+                        'analysis_days': row[4],
+                        'prediction_date': row[5],
+                        'is_active': bool(row[6]),
+                        'notes': row[7]
+                    })
+                
+                return results
+                
+        except sqlite3.Error as e:
+            print(f"Error obteniendo predicciones del sistema: {e}")
+            return []
+    
+    def create_system_notification(self, prediction_id: int, winning_number: int,
+                                  winning_date: str, winning_position: Optional[int] = None,
+                                  success_rate: Optional[float] = None) -> int:
+        """
+        Crea una notificación del sistema cuando una predicción coincide con un número ganador
+        
+        Args:
+            prediction_id: ID de la predicción que coincidió
+            winning_number: Número ganador que coincidió
+            winning_date: Fecha del sorteo ganador
+            winning_position: Posición del número ganador (1ra, 2da, 3ra)
+            success_rate: Tasa de éxito de la predicción
+            
+        Returns:
+            int: ID de la notificación creada, 0 si hay error
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                # Crear mensaje personalizado
+                position_text = ""
+                if winning_position:
+                    positions = {1: "1ra", 2: "2da", 3: "3ra"}
+                    position_text = f" en {positions.get(winning_position, str(winning_position))} posición"
+                
+                success_text = ""
+                if success_rate:
+                    success_text = f" (Tasa de éxito: {success_rate:.1%})"
+                
+                message = f"🎯 ¡El sistema predijo correctamente el número {winning_number}! Sorteo del {winning_date}{position_text}{success_text}"
+                
+                cursor.execute("""
+                INSERT OR IGNORE INTO system_notifications 
+                (prediction_id, winning_number, winning_date, 
+                 winning_position, notification_message, success_rate)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (prediction_id, winning_number, winning_date, 
+                      winning_position, message, success_rate))
+                
+                conn.commit()
+                # Si rowcount es 0, significa que no se insertó (ya existía)
+                if cursor.rowcount > 0:
+                    notification_id = cursor.lastrowid or 0
+                    print(f"📧 Notificación del sistema creada: {message}")
+                    return notification_id
+                else:
+                    return 0  # Ya existía la notificación
+                
+        except sqlite3.Error as e:
+            print(f"Error creando notificación del sistema: {e}")
+            return 0
+    
+    def get_system_notifications(self, unread_only: bool = False, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Obtiene las notificaciones del sistema
+        
+        Args:
+            unread_only: Si solo obtener notificaciones no leídas
+            limit: Número máximo de notificaciones a obtener
+            
+        Returns:
+            List[Dict]: Lista de notificaciones del sistema
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                query = """
+                SELECT id, prediction_id, winning_number, winning_date, 
+                       winning_position, matched_at, is_read, notification_message, success_rate
+                FROM system_notifications
+                """
+                
+                params: List[Any] = []
+                
+                if unread_only:
+                    query += " WHERE is_read = 0"
+                
+                query += " ORDER BY matched_at DESC LIMIT ?"
+                params.append(limit)
+                
+                cursor.execute(query, params)
+                
+                results = []
+                for row in cursor.fetchall():
+                    results.append({
+                        'id': row[0],
+                        'prediction_id': row[1],
+                        'winning_number': row[2],
+                        'winning_date': row[3],
+                        'winning_position': row[4],
+                        'matched_at': row[5],
+                        'is_read': bool(row[6]),
+                        'notification_message': row[7],
+                        'success_rate': row[8]
+                    })
+                
+                return results
+                
+        except sqlite3.Error as e:
+            print(f"Error obteniendo notificaciones del sistema: {e}")
+            return []
+    
+    def mark_system_notifications_as_read(self, notification_ids: Optional[List[int]] = None) -> int:
+        """
+        Marca notificaciones del sistema como leídas
+        
+        Args:
+            notification_ids: Lista de IDs específicos a marcar, None para marcar todas
+            
+        Returns:
+            int: Número de notificaciones marcadas como leídas
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                if notification_ids:
+                    # Marcar notificaciones específicas
+                    placeholders = ','.join(['?'] * len(notification_ids))
+                    cursor.execute(f"""
+                    UPDATE system_notifications 
+                    SET is_read = 1 
+                    WHERE id IN ({placeholders}) AND is_read = 0
+                    """, notification_ids)
+                else:
+                    # Marcar todas las notificaciones
+                    cursor.execute("""
+                    UPDATE system_notifications 
+                    SET is_read = 1 
+                    WHERE is_read = 0
+                    """)
+                
+                conn.commit()
+                return cursor.rowcount
+                
+        except sqlite3.Error as e:
+            print(f"Error marcando notificaciones del sistema: {e}")
+            return 0
+    
+    def check_system_predictions_against_winning_numbers(self, winning_date: str, 
+                                                        winning_numbers: List[Tuple[int, int]]) -> List[Dict[str, Any]]:
+        """
+        Compara números ganadores contra todas las predicciones activas del sistema y crea notificaciones
+        
+        Args:
+            winning_date: Fecha del sorteo
+            winning_numbers: Lista de tuplas (número, posición)
+            
+        Returns:
+            List[Dict]: Lista de coincidencias encontradas
+        """
+        try:
+            matches = []
+            system_predictions = self.get_system_predictions(active_only=True)
+            
+            for prediction in system_predictions:
+                prediction_numbers = prediction['predicted_numbers']
+                
+                # Calcular tasa de éxito basada en confianza
+                success_rate = prediction.get('confidence_threshold', 0.0)
+                
+                for winning_number, position in winning_numbers:
+                    if winning_number in prediction_numbers:
+                        # Crear notificación del sistema
+                        notification_id = self.create_system_notification(
+                            prediction_id=prediction['id'],
+                            winning_number=winning_number,
+                            winning_date=winning_date,
+                            winning_position=position,
+                            success_rate=success_rate
+                        )
+                        
+                        if notification_id > 0:
+                            matches.append({
+                                'prediction_id': prediction['id'],
+                                'winning_number': winning_number,
+                                'winning_position': position,
+                                'notification_id': notification_id,
+                                'prediction_method': prediction['prediction_method'],
+                                'success_rate': success_rate
+                            })
+            
+            return matches
+            
+        except Exception as e:
+            print(f"Error verificando predicciones del sistema: {e}")
+            return []
+    
+    def _check_new_draw_for_system_matches(self, draw_result: Dict[str, Any]) -> None:
+        """
+        Método privado para verificar coincidencias del sistema cuando se inserta un nuevo sorteo
+        
+        Args:
+            draw_result: Diccionario con información del nuevo sorteo
+        """
+        try:
+            winning_number = draw_result['number']
+            winning_date = str(draw_result['date'])
+            winning_position = draw_result.get('position', 1)
+            
+            # Obtener todas las predicciones activas del sistema
+            system_predictions = self.get_system_predictions(active_only=True)
+            
+            matches_found = 0
+            for prediction in system_predictions:
+                prediction_numbers = prediction['predicted_numbers']
+                
+                # Verificar si el número ganador está en la predicción del sistema
+                if winning_number in prediction_numbers:
+                    # Calcular tasa de éxito
+                    success_rate = prediction.get('confidence_threshold', 0.0)
+                    
+                    # Crear notificación del sistema
+                    notification_id = self.create_system_notification(
+                        prediction_id=prediction['id'],
+                        winning_number=winning_number,
+                        winning_date=winning_date,
+                        winning_position=winning_position,
+                        success_rate=success_rate
+                    )
+                    
+                    if notification_id > 0:
+                        matches_found += 1
+                        print(f"🎯 Notificación del sistema creada: Predicción {prediction['id']} - Número {winning_number}")
+            
+            if matches_found > 0:
+                print(f"🎉 El sistema tuvo {matches_found} predicción(es) exitosa(s) para el número {winning_number}")
+                
+        except Exception as e:
+            print(f"Error verificando coincidencias del sistema para nuevo sorteo: {e}")
+    
+    def generate_and_save_system_predictions(self, predictor, analyzer, num_predictions: int = 15) -> int:
+        """
+        Genera y guarda predicciones automáticamente para el sistema
+        
+        Args:
+            predictor: Instancia del LotteryPredictor
+            analyzer: Instancia del StatisticalAnalyzer
+            num_predictions: Número de predicciones a generar
+            
+        Returns:
+            int: ID de la predicción guardada, 0 si hay error
+        """
+        try:
+            # Verificar si ya hay predicciones del sistema activas para hoy
+            today = datetime.now().date()
+            existing_predictions = self.get_system_predictions(active_only=True, limit=5)
+            
+            # Si ya hay predicciones de hoy, no generar nuevas
+            for pred in existing_predictions:
+                pred_date = datetime.strptime(pred['prediction_date'][:10], '%Y-%m-%d').date()
+                if pred_date == today:
+                    print(f"Ya existen predicciones del sistema para hoy ({today})")
+                    return pred['id']
+            
+            # Generar nuevas predicciones usando el método combinado
+            predictions = predictor.generate_predictions(
+                method="combinado",
+                days=180,
+                num_predictions=num_predictions,
+                confidence_threshold=0.75
+            )
+            
+            if predictions:
+                # Extraer solo los números de las predicciones
+                predicted_numbers = [pred[0] for pred in predictions]
+                avg_confidence = sum(pred[2] for pred in predictions) / len(predictions)
+                
+                # Guardar predicción del sistema
+                prediction_id = self.save_system_prediction(
+                    predicted_numbers=predicted_numbers,
+                    prediction_method="Predicción Automática del Sistema (Combinado)",
+                    confidence_threshold=avg_confidence,
+                    analysis_days=180,
+                    notes=f"Predicción automática generada el {today} con {num_predictions} números"
+                )
+                
+                if prediction_id > 0:
+                    print(f"✅ Predicción automática del sistema generada con {len(predicted_numbers)} números")
+                    return prediction_id
+                else:
+                    print("❌ Error al guardar la predicción automática del sistema")
+                    return 0
+            else:
+                print("❌ No se pudieron generar predicciones automáticas del sistema")
+                return 0
+                
+        except Exception as e:
+            print(f"Error generando predicciones automáticas del sistema: {e}")
             return 0

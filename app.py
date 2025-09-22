@@ -54,6 +54,59 @@ db, scraper, analyzer, predictor = init_components()
 st.title("🎯 Sistema de Análisis Estadístico - Quiniela Loteka")
 st.markdown("### Predicción de números basada en análisis de frecuencia histórica")
 
+# === NOTIFICACIONES DEL SISTEMA ===
+# Mostrar notificaciones de éxito del sistema a todos los usuarios
+system_notifications = db.get_system_notifications(unread_only=True, limit=3)
+
+if system_notifications:
+    st.markdown("---")
+    st.subheader("🎉 ¡Últimos Éxitos del Sistema de Predicción!")
+    
+    for notif in system_notifications:
+        # Crear un contenedor destacado para cada notificación
+        with st.container():
+            col1, col2 = st.columns([8, 2])
+            
+            with col1:
+                # Mostrar el mensaje de éxito
+                st.success(f"✨ {notif['notification_message']}")
+                
+                # Mostrar información adicional
+                st.caption(f"📅 Fecha del acierto: {notif['winning_date']} | 🕐 Registrado: {notif['matched_at'][:16]}")
+            
+            with col2:
+                # Mostrar tasa de éxito si está disponible
+                if notif['success_rate']:
+                    success_rate = notif['success_rate']
+                    if success_rate > 1:
+                        success_rate = success_rate / 100
+                    st.metric(
+                        label="Confianza",
+                        value=f"{success_rate:.1%}",
+                        help="Nivel de confianza del sistema para esta predicción"
+                    )
+    
+    # Botón para marcar notificaciones como leídas (opcional)
+    col1, col2, col3 = st.columns([1, 1, 3])
+    with col2:
+        if st.button("✅ Marcar alertas como vistas", help="Ocultar estas alertas de éxito"):
+            notification_ids = [notif['id'] for notif in system_notifications]
+            marked_count = db.mark_system_notifications_as_read(notification_ids)
+            if marked_count > 0:
+                st.success(f"Se marcaron {marked_count} alertas como vistas")
+                st.rerun()
+    
+    st.markdown("---")
+
+# Generar predicciones automáticas del sistema si no existen para hoy
+try:
+    # Intentar generar predicciones automáticas del sistema
+    prediction_id = db.generate_and_save_system_predictions(predictor, analyzer, num_predictions=12)
+    if prediction_id > 0:
+        st.info("🤖 El sistema ha generado nuevas predicciones automáticas para hoy")
+except Exception as e:
+    pass  # No mostrar errores de generación automática al usuario
+
 # Sección explicativa sobre la Quiniela de Loteka
 with st.expander("❓ ¿Cómo funciona la Quiniela de Loteka? - Guía Completa", expanded=False):
     st.markdown("""
@@ -134,6 +187,15 @@ if st.sidebar.button("🔄 Actualizar Datos Históricos", type="primary"):
                         saved_count += 1
                 
                 st.sidebar.success(f"✅ {saved_count} nuevos sorteos guardados")
+                
+                # Generar nuevas predicciones del sistema después de actualizar datos
+                if saved_count > 0:
+                    try:
+                        prediction_id = db.generate_and_save_system_predictions(predictor, analyzer, num_predictions=15)
+                        if prediction_id > 0:
+                            st.sidebar.info("🤖 Predicciones del sistema actualizadas")
+                    except Exception as e:
+                        pass  # No mostrar errores de predicciones automáticas
             else:
                 st.sidebar.warning("⚠️ No se encontraron datos nuevos")
                 
