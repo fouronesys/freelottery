@@ -2034,6 +2034,80 @@ with tab9:
                 else:
                     st.info("📭 No tienes notificaciones.")
             
+            # Herramientas administrativas
+            st.divider()
+            st.subheader("🔧 Herramientas de Gestión")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("**Procesar Sorteos Recientes**")
+                days_to_process = st.selectbox(
+                    "Días a procesar",
+                    [3, 7, 14, 30],
+                    index=1,
+                    help="Procesa sorteos de los últimos N días para crear notificaciones que puedan haberse perdido"
+                )
+                
+                if st.button("🔄 Procesar Sorteos", type="secondary"):
+                    with st.spinner("Procesando sorteos recientes..."):
+                        notifications_created = db.process_recent_draws_for_notifications(days_to_process)
+                        if notifications_created > 0:
+                            st.success(f"✅ Se crearon {notifications_created} notificaciones para sorteos de los últimos {days_to_process} días")
+                            st.rerun()
+                        else:
+                            st.info("ℹ️ No se encontraron coincidencias nuevas en el período seleccionado")
+            
+            with col2:
+                st.write("**Simulador de Sorteo (Para Pruebas)**")
+                sim_number = st.number_input(
+                    "Número ganador",
+                    min_value=0,
+                    max_value=99,
+                    value=25,
+                    help="Simula un número ganador para probar el sistema de notificaciones"
+                )
+                
+                sim_position = st.selectbox(
+                    "Posición",
+                    [1, 2, 3],
+                    index=0,
+                    help="Posición del número ganador (1ra, 2da, 3ra)"
+                )
+                
+                if st.button("🎲 Simular Sorteo", type="secondary"):
+                    # Crear un resultado simulado con fecha de hoy
+                    sim_date = datetime.now().date()
+                    sim_result = {
+                        'date': sim_date,
+                        'number': sim_number,
+                        'position': sim_position,
+                        'prize_amount': 1000  # Valor simulado
+                    }
+                    
+                    # Verificar directamente las coincidencias sin guardarlo en la BD
+                    active_predictions = db.get_all_active_predictions()
+                    matches_found = 0
+                    
+                    for prediction in active_predictions:
+                        if sim_number in prediction['predicted_numbers']:
+                            # Crear notificación simulada
+                            notification_id = db.create_notification(
+                                user_id=prediction['user_id'],
+                                prediction_id=prediction['id'],
+                                winning_number=sim_number,
+                                winning_date=str(sim_date),
+                                winning_position=sim_position
+                            )
+                            if notification_id > 0:
+                                matches_found += 1
+                    
+                    if matches_found > 0:
+                        st.success(f"🎉 ¡Simulación exitosa! Se crearon {matches_found} notificaciones para el número {sim_number}")
+                        st.rerun()
+                    else:
+                        st.info(f"📝 Simulación completada. No hay predicciones activas que contengan el número {sim_number}")
+            
             # Información sobre el sistema de notificaciones
             with st.expander("ℹ️ ¿Cómo funcionan las notificaciones?"):
                 st.write("""
@@ -2047,10 +2121,15 @@ with tab9:
                 
                 🔹 **Gestión de Estados**: Puedes marcar notificaciones como leídas y filtrar entre leídas y no leídas.
                 
+                **Herramientas Disponibles:**
+                - **Procesar Sorteos Recientes**: Útil cuando agregas predicciones después de que hayan ocurrido sorteos
+                - **Simulador de Sorteo**: Para probar el sistema de notificaciones con números específicos
+                
                 **Consejos:**
                 - Mantén tus predicciones activas para seguir recibiendo notificaciones
                 - Revisa regularmente tus notificaciones para no perderte coincidencias
                 - Usa las notas en las predicciones para recordar tu estrategia
+                - Usa el procesador de sorteos recientes si acabas de crear predicciones
                 """)
     else:
         st.info("👤 Por favor, ingresa tu ID de usuario para acceder a tus predicciones y notificaciones.")

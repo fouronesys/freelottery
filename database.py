@@ -15,6 +15,8 @@ class DatabaseManager:
         """Inicializa la base de datos y crea las tablas necesarias"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 # Tabla principal de resultados
@@ -67,7 +69,8 @@ class DatabaseManager:
                     matched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_read BOOLEAN DEFAULT 0,
                     notification_message TEXT,
-                    FOREIGN KEY (prediction_id) REFERENCES user_predictions (id)
+                    FOREIGN KEY (prediction_id) REFERENCES user_predictions (id),
+                    UNIQUE(user_id, prediction_id, winning_number, winning_date, winning_position)
                 )
                 """)
                 
@@ -101,6 +104,12 @@ class DatabaseManager:
                 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read)
                 """)
                 
+                # Crear índice único para prevenir duplicados en bases de datos existentes
+                cursor.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS ux_notifications_unique 
+                ON notifications(user_id, prediction_id, winning_number, winning_date, winning_position)
+                """)
+                
                 conn.commit()
                 
         except sqlite3.Error as e:
@@ -119,6 +128,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -139,7 +150,13 @@ class DatabaseManager:
                 """, (datetime.now().isoformat(),))
                 
                 conn.commit()
-                return cursor.rowcount > 0
+                was_inserted = cursor.rowcount > 0
+                
+                # Si se insertó un nuevo resultado, verificar coincidencias con predicciones
+                if was_inserted:
+                    self._check_new_draw_for_matches(result)
+                
+                return was_inserted
                 
         except sqlite3.Error as e:
             print(f"Error guardando resultado: {e}")
@@ -149,6 +166,8 @@ class DatabaseManager:
         """Obtiene todos los sorteos en un período específico"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -173,6 +192,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cutoff_date = datetime.now() - timedelta(days=days)
@@ -210,6 +231,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cutoff_date = datetime.now() - timedelta(days=days)
@@ -249,6 +272,8 @@ class DatabaseManager:
         """Obtiene el número total de sorteos registrados"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(DISTINCT date) FROM draw_results")
                 return cursor.fetchone()[0]
@@ -259,6 +284,8 @@ class DatabaseManager:
         """Obtiene el número de sorteos en los últimos N días"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cutoff_date = datetime.now() - timedelta(days=days)
                 cursor.execute("""
@@ -281,6 +308,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cutoff_date = datetime.now() - timedelta(days=days)
@@ -310,6 +339,8 @@ class DatabaseManager:
         """Obtiene el número de días cubiertos por los datos"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("""
                 SELECT 
@@ -325,6 +356,8 @@ class DatabaseManager:
         """Obtiene la fecha de la última actualización"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("""
                 SELECT value FROM metadata WHERE key = 'last_update'
@@ -340,6 +373,8 @@ class DatabaseManager:
         """Obtiene los sorteos más recientes"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("""
                 SELECT date, number, position, prize_amount
@@ -355,6 +390,8 @@ class DatabaseManager:
         """Obtiene números en un rango de fechas específico"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("""
                 SELECT date, number FROM draw_results
@@ -379,6 +416,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("""
                 SELECT date, number FROM draw_results
@@ -395,6 +434,8 @@ class DatabaseManager:
         """Obtiene todos los números únicos que han salido"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cursor.execute("SELECT DISTINCT number FROM draw_results ORDER BY number")
                 return [row[0] for row in cursor.fetchall()]
@@ -405,6 +446,8 @@ class DatabaseManager:
         """Limpia datos antiguos para mantener la base de datos optimizada"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 cutoff_date = datetime.now() - timedelta(days=days_to_keep)
                 
@@ -445,6 +488,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 # Convertir lista de números a string separado por comas
@@ -478,6 +523,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 query = """
@@ -530,6 +577,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -554,6 +603,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -605,6 +656,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 # Crear mensaje personalizado
@@ -616,7 +669,7 @@ class DatabaseManager:
                 message = f"¡Felicitaciones! Tu predicción del número {winning_number} coincidió con el sorteo del {winning_date}{position_text}."
                 
                 cursor.execute("""
-                INSERT INTO notifications 
+                INSERT OR IGNORE INTO notifications 
                 (user_id, prediction_id, winning_number, winning_date, 
                  winning_position, notification_message)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -624,7 +677,11 @@ class DatabaseManager:
                       winning_position, message))
                 
                 conn.commit()
-                return cursor.lastrowid or 0
+                # Si rowcount es 0, significa que no se insertó (ya existía)
+                if cursor.rowcount > 0:
+                    return cursor.lastrowid or 0
+                else:
+                    return 0  # Ya existía la notificación
                 
         except sqlite3.Error as e:
             print(f"Error creando notificación: {e}")
@@ -645,6 +702,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 query = """
@@ -695,6 +754,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -722,6 +783,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -749,6 +812,8 @@ class DatabaseManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -809,3 +874,78 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error verificando predicciones: {e}")
             return []
+    
+    def _check_new_draw_for_matches(self, draw_result: Dict[str, Any]) -> None:
+        """
+        Método privado para verificar coincidencias cuando se inserta un nuevo sorteo
+        
+        Args:
+            draw_result: Diccionario con información del nuevo sorteo
+        """
+        try:
+            winning_number = draw_result['number']
+            winning_date = str(draw_result['date'])
+            winning_position = draw_result.get('position', 1)
+            
+            # Obtener todas las predicciones activas
+            active_predictions = self.get_all_active_predictions()
+            
+            matches_found = 0
+            for prediction in active_predictions:
+                prediction_numbers = prediction['predicted_numbers']
+                
+                # Verificar si el número ganador está en la predicción
+                if winning_number in prediction_numbers:
+                    # Crear notificación
+                    notification_id = self.create_notification(
+                        user_id=prediction['user_id'],
+                        prediction_id=prediction['id'],
+                        winning_number=winning_number,
+                        winning_date=winning_date,
+                        winning_position=winning_position
+                    )
+                    
+                    if notification_id > 0:
+                        matches_found += 1
+                        print(f"📧 Notificación creada: Usuario {prediction['user_id']} - Número {winning_number}")
+            
+            if matches_found > 0:
+                print(f"🎉 Se crearon {matches_found} notificaciones por coincidencias del número {winning_number}")
+                
+        except Exception as e:
+            print(f"Error verificando coincidencias para nuevo sorteo: {e}")
+    
+    def process_recent_draws_for_notifications(self, days: int = 7) -> int:
+        """
+        Procesa sorteos recientes para crear notificaciones que puedan haberse perdido
+        
+        Args:
+            days: Número de días hacia atrás para procesar
+            
+        Returns:
+            int: Número de notificaciones creadas
+        """
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            # Obtener sorteos recientes
+            recent_draws = self.get_draws_in_period(cutoff_date, datetime.now())
+            
+            notifications_created = 0
+            for draw in recent_draws:
+                date, number, position, prize_amount = draw
+                
+                # Verificar coincidencias para este sorteo
+                matches = self.check_predictions_against_winning_numbers(
+                    winning_date=str(date),
+                    winning_numbers=[(number, position)]
+                )
+                
+                notifications_created += len(matches)
+            
+            print(f"🔄 Procesamiento completo: {notifications_created} notificaciones creadas para últimos {days} días")
+            return notifications_created
+            
+        except Exception as e:
+            print(f"Error procesando sorteos recientes: {e}")
+            return 0
