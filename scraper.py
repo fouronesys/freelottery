@@ -137,7 +137,6 @@ class QuinielaScraperManager:
                 possible_endpoints = [
                     f"{base_url}",  # Página principal de Loteka
                     f"{base_url}/quiniela",
-                    f"{base_url}/resultados"
                 ]
             elif "loteriasdominicanas.com" in base_url:
                 possible_endpoints = [
@@ -156,27 +155,38 @@ class QuinielaScraperManager:
             
             for endpoint in possible_endpoints:
                 try:
-                    response = requests.get(endpoint, headers=self.headers, timeout=10)
+                    print(f"Intentando obtener datos de: {endpoint}")
+                    response = requests.get(endpoint, headers=self.headers, timeout=15)
+                    
+                    print(f"Status code para {endpoint}: {response.status_code}")
                     
                     if response.status_code == 200:
                         # Usar trafilatura para extraer contenido limpio
                         text_content = trafilatura.extract(response.text)
                         
                         if text_content:
+                            print(f"Contenido extraído de {endpoint}: {len(text_content)} caracteres")
+                            print(f"Muestra del contenido: {text_content[:200]}...")
+                            
                             parsed_results = self._parse_lottery_content(text_content, start_date, end_date, endpoint)
+                            print(f"Resultados parseados de {endpoint}: {len(parsed_results)}")
+                            
                             if parsed_results:
                                 results.extend(parsed_results)
+                                print(f"✅ Datos obtenidos exitosamente de {endpoint}: {len(parsed_results)} registros")
                                 return results  # Retornar en cuanto encontremos datos válidos
+                        else:
+                            print(f"⚠️ Trafilatura no pudo extraer contenido de {endpoint}")
                     
                     # Esperar entre solicitudes para ser respetuoso
                     time.sleep(random.uniform(1, 3))
                     
                 except requests.RequestException as e:
-                    print(f"Error en solicitud a {endpoint}: {e}")
+                    print(f"❌ Error en solicitud a {endpoint}: {e}")
                     continue
         
         except Exception as e:
-            print(f"Error general scrapeando {base_url}: {e}")
+            print(f"❌ Error general scrapeando {base_url}: {e}")
         
         return results
     
@@ -216,62 +226,79 @@ class QuinielaScraperManager:
         results = []
         
         try:
+            print(f"Parseando contenido de Loteka. Contenido: {len(content)} caracteres")
+            
             # Dividir contenido en líneas para procesamiento secuencial
             lines = content.split('\n')
             current_date = None
-            position_counter = 1
-            draw_numbers = []
+            i = 0
             
-            for line in lines:
-                line = line.strip()
+            while i < len(lines):
+                line = lines[i].strip()
                 
-                # Buscar fechas (formato DD/MM/YYYY o DD-MM-YYYY)
-                date_match = re.search(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})', line)
+                # Buscar fechas (formato DD/MM/YYYY)
+                date_match = re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', line)
                 if date_match:
                     try:
                         day, month, year = date_match.groups()
                         parsed_date = datetime(int(year), int(month), int(day))
                         
-                        # Si hay números acumulados y fecha anterior válida, procesarlos
-                        if current_date and start_date <= current_date <= end_date and draw_numbers:
-                            for i, num in enumerate(draw_numbers):
-                                results.append({
-                                    'date': current_date.strftime('%Y-%m-%d'),
-                                    'number': num,
-                                    'position': i + 1,
-                                    'prize_amount': 0
-                                })
-                        
-                        # Reiniciar para nueva fecha
-                        current_date = parsed_date
-                        draw_numbers = []
-                        position_counter = 1
+                        if start_date <= parsed_date <= end_date:
+                            current_date = parsed_date
+                            print(f"Fecha válida encontrada: {current_date.strftime('%Y-%m-%d')}")
                     except (ValueError, IndexError):
-                        continue
+                        print(f"Error parseando fecha: {line}")
                 
-                # Buscar números de quiniela en la línea
+                # Si encontramos indicadores de posición, buscar números en las siguientes líneas
+                if current_date and line in ['1er.', '2do.', '3er.', '4to.', '5er.']:
+                    position = {'1er.': 1, '2do.': 2, '3er.': 3, '4to.': 4, '5er.': 5}.get(line, 0)
+                    
+                    # Buscar el número en las siguientes líneas
+                    j = i + 1
+                    while j < len(lines) and j < i + 3:  # Buscar hasta 3 líneas adelante
+                        next_line = lines[j].strip()
+                        
+                        # Verificar si la línea contiene solo números de 1-2 dígitos
+                        if re.match(r'^\d{1,2}$', next_line):
+                            try:
+                                number = int(next_line)
+                                if 0 <= number <= 99:
+                                    result = {
+                                        'date': current_date.strftime('%Y-%m-%d'),
+                                        'number': number,
+                                        'position': position,
+                                        'prize_amount': 0
+                                    }
+                                    results.append(result)
+                                    print(f"Número encontrado: {line} {number} para fecha {current_date.strftime('%Y-%m-%d')}")
+                                    break
+                            except ValueError:
+                                pass
+                        j += 1
+                
+                # También buscar patrones en línea (formato original)
                 quiniela_matches = re.findall(r'(?:1er\.|2do\.|3er\.)\s*(\d{2})', line)
                 for number_str in quiniela_matches:
                     try:
                         number = int(number_str)
-                        if 0 <= number <= 99 and len(draw_numbers) < 3:
-                            draw_numbers.append(number)
+                        if 0 <= number <= 99 and current_date:
+                            result = {
+                                'date': current_date.strftime('%Y-%m-%d'),
+                                'number': number,
+                                'position': 1,  # Default position
+                                'prize_amount': 0
+                            }
+                            results.append(result)
+                            print(f"Número en línea encontrado: {number} para fecha {current_date.strftime('%Y-%m-%d')}")
                     except ValueError:
                         continue
-            
-            # Procesar últimos números si hay fecha válida
-            if current_date and start_date <= current_date <= end_date and draw_numbers:
-                for i, num in enumerate(draw_numbers):
-                    results.append({
-                        'date': current_date.strftime('%Y-%m-%d'),
-                        'number': num,
-                        'position': i + 1,
-                        'prize_amount': 0
-                    })
+                
+                i += 1
         
         except Exception as e:
-            print(f"Error parseando contenido de Loteka: {e}")
+            print(f"❌ Error parseando contenido de Loteka: {e}")
         
+        print(f"Total resultados parseados de Loteka: {len(results)}")
         return results
     
     def _parse_loteriasdominicanas_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
