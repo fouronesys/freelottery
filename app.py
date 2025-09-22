@@ -158,7 +158,7 @@ prediction_method = st.sidebar.selectbox(
 )
 
 # Pestañas principales
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📈 Dashboard Principal",
     "🔢 Análisis de Números",
     "🎯 Predicciones",
@@ -166,7 +166,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "⏰ Análisis Temporal",
     "🤝 Co-ocurrencia y Patrones",
     "📅 Recomendaciones por Día",
-    "🧠 Análisis Estadístico Complejo"
+    "🧠 Análisis Estadístico Complejo",
+    "📩 Mis Predicciones"
 ])
 
 with tab1:
@@ -1798,6 +1799,261 @@ with tab8:
     
     else:
         st.warning("⚠️ Se requieren datos históricos para ejecutar análisis estadísticos complejos.")
+
+with tab9:
+    st.header("📩 Mis Predicciones y Notificaciones")
+    
+    # Sistema de identificación de usuario
+    st.subheader("👤 Identificación de Usuario")
+    
+    # Usar session state para mantener el user_id
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = ""
+    
+    user_id = st.text_input(
+        "Ingresa tu ID de usuario único",
+        value=st.session_state.user_id,
+        help="Usa un identificador único como tu email o nombre de usuario para asociar tus predicciones",
+        placeholder="ej: usuario@email.com o mi_usuario_123"
+    )
+    
+    if user_id:
+        st.session_state.user_id = user_id
+        
+        # Obtener notificaciones no leídas
+        unread_count = db.get_unread_notifications_count(user_id)
+        
+        if unread_count > 0:
+            st.warning(f"🔔 Tienes {unread_count} notificación(es) nueva(s)!")
+        
+        # Crear tabs secundarias
+        subtab1, subtab2, subtab3 = st.tabs([
+            "🎯 Guardar Predicciones",
+            "📋 Mis Predicciones",
+            "🔔 Notificaciones"
+        ])
+        
+        with subtab1:
+            st.subheader("🎯 Guardar Nuevas Predicciones")
+            
+            if total_draws > 0:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    save_num_predictions = st.slider(
+                        "Cantidad de números a predecir",
+                        min_value=5,
+                        max_value=20,
+                        value=10,
+                        help="Número de predicciones a generar y guardar"
+                    )
+                
+                with col2:
+                    save_confidence_threshold = st.slider(
+                        "Umbral de confianza (%)",
+                        min_value=50,
+                        max_value=95,
+                        value=70,
+                        help="Nivel mínimo de confianza para las predicciones"
+                    )
+                
+                # Área para notas del usuario
+                user_notes = st.text_area(
+                    "Notas personales (opcional)",
+                    help="Agrega notas sobre esta predicción",
+                    placeholder="Ej: Predicción para el sorteo de fin de semana..."
+                )
+                
+                if st.button("🎯 Generar y Guardar Predicciones", type="primary"):
+                    with st.spinner("Generando y guardando predicciones..."):
+                        # Generar predicciones usando el sistema existente
+                        predictions = predictor.generate_predictions(
+                            method=prediction_method.lower().replace(" ", "_"),
+                            days=days_to_analyze,
+                            num_predictions=save_num_predictions,
+                            confidence_threshold=save_confidence_threshold / 100
+                        )
+                        
+                        if predictions:
+                            # Extraer solo los números de las predicciones
+                            predicted_numbers = [pred[0] for pred in predictions]
+                            
+                            # Guardar en base de datos
+                            prediction_id = db.save_user_prediction(
+                                user_id=user_id,
+                                predicted_numbers=predicted_numbers,
+                                prediction_method=prediction_method,
+                                confidence_threshold=save_confidence_threshold / 100,
+                                analysis_days=days_to_analyze,
+                                notes=user_notes
+                            )
+                            
+                            if prediction_id > 0:
+                                st.success(f"✅ Predicción guardada exitosamente (ID: {prediction_id})")
+                                
+                                # Mostrar predicciones guardadas
+                                st.subheader("🎯 Números Predichos y Guardados")
+                                
+                                cols = st.columns(5)
+                                for i, number in enumerate(predicted_numbers[:10]):
+                                    with cols[i % 5]:
+                                        st.metric(
+                                            label=f"#{i+1}",
+                                            value=str(number),
+                                            help=f"Número predicho con confianza {save_confidence_threshold}%"
+                                        )
+                                
+                                st.info("🔔 Ahora recibirás notificaciones automáticamente cuando alguno de estos números coincida con los sorteos ganadores.")
+                            else:
+                                st.error("❌ Error al guardar la predicción. Inténtalo de nuevo.")
+                        else:
+                            st.error("❌ No se pudieron generar predicciones. Verifica los datos.")
+            else:
+                st.warning("⚠️ Se requieren datos históricos para generar predicciones.")
+        
+        with subtab2:
+            st.subheader("📋 Mis Predicciones Guardadas")
+            
+            # Filtros
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                show_active_only = st.checkbox("Solo predicciones activas", value=True)
+            
+            with col2:
+                if st.button("🔄 Actualizar Lista"):
+                    st.rerun()
+            
+            # Obtener predicciones del usuario
+            user_predictions = db.get_user_predictions(user_id, active_only=show_active_only)
+            
+            if user_predictions:
+                st.write(f"📊 **Total de predicciones:** {len(user_predictions)}")
+                
+                for i, prediction in enumerate(user_predictions):
+                    with st.expander(f"🎯 Predicción {prediction['id']} - {prediction['prediction_date'][:10]}", expanded=i==0):
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.write("**Información:**")
+                            st.write(f"**ID:** {prediction['id']}")
+                            st.write(f"**Método:** {prediction['prediction_method']}")
+                            st.write(f"**Fecha:** {prediction['prediction_date'][:10]}")
+                            if prediction['confidence_threshold']:
+                                st.write(f"**Confianza:** {prediction['confidence_threshold']:.1%}")
+                            st.write(f"**Estado:** {'🟢 Activa' if prediction['is_active'] else '🔴 Inactiva'}")
+                        
+                        with col2:
+                            st.write("**Números Predichos:**")
+                            # Mostrar números en filas de 5
+                            numbers = prediction['predicted_numbers']
+                            for j in range(0, len(numbers), 5):
+                                row_numbers = numbers[j:j+5]
+                                st.write(" | ".join([f"**{num}**" for num in row_numbers]))
+                        
+                        with col3:
+                            st.write("**Acciones:**")
+                            
+                            if prediction['is_active']:
+                                if st.button(f"🔴 Desactivar", key=f"deactivate_{prediction['id']}"):
+                                    if db.deactivate_user_prediction(prediction['id']):
+                                        st.success("Predicción desactivada")
+                                        st.rerun()
+                                    else:
+                                        st.error("Error al desactivar")
+                        
+                        if prediction['notes']:
+                            st.write(f"**Notas:** {prediction['notes']}")
+                        
+                        # Verificar si hay notificaciones para esta predicción
+                        notifications = db.get_user_notifications(user_id)
+                        prediction_notifications = [n for n in notifications if n['prediction_id'] == prediction['id']]
+                        
+                        if prediction_notifications:
+                            st.success(f"🎉 Esta predicción ha tenido {len(prediction_notifications)} coincidencia(s)!")
+            else:
+                st.info("📝 No tienes predicciones guardadas. Usa la pestaña 'Guardar Predicciones' para crear tu primera predicción.")
+        
+        with subtab3:
+            st.subheader("🔔 Mis Notificaciones")
+            
+            # Botones de acción
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                show_unread_only = st.checkbox("Solo no leídas", value=True)
+            
+            with col2:
+                if st.button("✅ Marcar todas como leídas"):
+                    marked_count = db.mark_all_user_notifications_as_read(user_id)
+                    if marked_count > 0:
+                        st.success(f"Se marcaron {marked_count} notificaciones como leídas")
+                        st.rerun()
+                    else:
+                        st.info("No había notificaciones por marcar")
+            
+            # Obtener notificaciones
+            user_notifications = db.get_user_notifications(user_id, unread_only=show_unread_only)
+            
+            if user_notifications:
+                st.write(f"📧 **Total de notificaciones:** {len(user_notifications)}")
+                
+                for notification in user_notifications:
+                    # Estilo de la notificación según si está leída o no
+                    if notification['is_read']:
+                        container = st.container()
+                        emoji = "📨"
+                    else:
+                        container = st.container()
+                        emoji = "🔔"
+                    
+                    with container:
+                        col1, col2, col3 = st.columns([6, 2, 2])
+                        
+                        with col1:
+                            st.write(f"{emoji} {notification['notification_message']}")
+                            st.caption(f"Fecha: {notification['matched_at'][:10]} | Predicción ID: {notification['prediction_id']}")
+                        
+                        with col2:
+                            if notification['winning_position']:
+                                positions = {1: "1ra", 2: "2da", 3: "3ra"}
+                                st.write(f"**{positions.get(notification['winning_position'], 'N/A')} posición**")
+                        
+                        with col3:
+                            if not notification['is_read']:
+                                if st.button(f"✅ Marcar leída", key=f"read_{notification['id']}"):
+                                    if db.mark_notification_as_read(notification['id']):
+                                        st.success("Marcada como leída")
+                                        st.rerun()
+                        
+                        st.divider()
+            else:
+                if show_unread_only:
+                    st.info("🎉 No tienes notificaciones nuevas.")
+                else:
+                    st.info("📭 No tienes notificaciones.")
+            
+            # Información sobre el sistema de notificaciones
+            with st.expander("ℹ️ ¿Cómo funcionan las notificaciones?"):
+                st.write("""
+                **Sistema de Notificaciones Automáticas:**
+                
+                🔹 **Detección Automática**: El sistema compara automáticamente los números ganadores de los sorteos con tus predicciones activas.
+                
+                🔹 **Notificación Inmediata**: Cuando uno de tus números predichos coincide con un número ganador, recibes una notificación instantánea.
+                
+                🔹 **Detalles Completos**: Cada notificación incluye el número ganador, la fecha del sorteo, la posición (1ra, 2da, 3ra) y la predicción que coincidió.
+                
+                🔹 **Gestión de Estados**: Puedes marcar notificaciones como leídas y filtrar entre leídas y no leídas.
+                
+                **Consejos:**
+                - Mantén tus predicciones activas para seguir recibiendo notificaciones
+                - Revisa regularmente tus notificaciones para no perderte coincidencias
+                - Usa las notas en las predicciones para recordar tu estrategia
+                """)
+    else:
+        st.info("👤 Por favor, ingresa tu ID de usuario para acceder a tus predicciones y notificaciones.")
 
 # Footer
 st.markdown("---")

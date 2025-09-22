@@ -427,8 +427,8 @@ class DatabaseManager:
     # === MÉTODOS PARA GESTIÓN DE PREDICCIONES DE USUARIOS ===
     
     def save_user_prediction(self, user_id: str, predicted_numbers: List[int], 
-                           prediction_method: str = None, confidence_threshold: float = None,
-                           analysis_days: int = None, notes: str = None) -> int:
+                           prediction_method: Optional[str] = None, confidence_threshold: Optional[float] = None,
+                           analysis_days: Optional[int] = None, notes: Optional[str] = None) -> int:
         """
         Guarda una predicción de usuario en la base de datos
         
@@ -459,7 +459,7 @@ class DatabaseManager:
                       analysis_days, notes))
                 
                 conn.commit()
-                return cursor.lastrowid
+                return cursor.lastrowid or 0
                 
         except sqlite3.Error as e:
             print(f"Error guardando predicción: {e}")
@@ -589,7 +589,7 @@ class DatabaseManager:
     # === MÉTODOS PARA GESTIÓN DE NOTIFICACIONES ===
     
     def create_notification(self, user_id: str, prediction_id: int, winning_number: int,
-                          winning_date: str, winning_position: int = None) -> int:
+                          winning_date: str, winning_position: Optional[int] = None) -> int:
         """
         Crea una notificación cuando una predicción coincide con un número ganador
         
@@ -624,7 +624,7 @@ class DatabaseManager:
                       winning_position, message))
                 
                 conn.commit()
-                return cursor.lastrowid
+                return cursor.lastrowid or 0
                 
         except sqlite3.Error as e:
             print(f"Error creando notificación: {e}")
