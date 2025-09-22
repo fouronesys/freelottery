@@ -1,27 +1,38 @@
 #!/bin/bash
 
-# Script de inicio para deployment en Render
-echo "Iniciando aplicación Streamlit..."
+# Script de inicio optimizado para deployment en Render
+echo "🚀 Iniciando aplicación Streamlit optimizada..."
 
 # Crear directorio .streamlit si no existe
 mkdir -p .streamlit
 
-# Crear archivo de configuración de Streamlit para deployment
+# Crear archivo de configuración optimizado de Streamlit
 cat > .streamlit/config.toml << EOF
 [server]
 headless = true
 address = "0.0.0.0"
-port = 5000
+port = \$PORT
+enableCORS = false
 
 [browser]
 gatherUsageStats = false
 
 [theme]
 base = "light"
+
+[logger]
+level = "error"
+
+[client]
+caching = true
+displayEnabled = true
 EOF
 
-# Ejecutar la aplicación Streamlit
-# Usar puerto de entorno de Render o default 5000 
-PORT=${PORT:-5000}
-echo "Iniciando Streamlit en puerto $PORT"
-streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+# Verificar variables de entorno
+PORT=\${PORT:-5000}
+echo "📍 Puerto asignado: \$PORT"
+echo "🔧 Configuración de producción aplicada"
+
+# Ejecutar la aplicación Streamlit con configuración optimizada
+echo "▶️ Iniciando servidor Streamlit..."
+exec streamlit run app.py --server.port=\$PORT --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false

@@ -10,6 +10,7 @@ class DatabaseManager:
     def __init__(self, db_path: str = "quiniela_loteka.db"):
         self.db_path = db_path
         self.init_database()
+        self._optimize_database()
     
     def init_database(self):
         """Inicializa la base de datos y crea las tablas necesarias"""
@@ -163,6 +164,21 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"Error inicializando base de datos: {e}")
             raise
+    
+    def _optimize_database(self):
+        """Optimiza la configuración de SQLite para mejor rendimiento"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                # Configuraciones de rendimiento para SQLite
+                conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging para mejor concurrencia
+                conn.execute("PRAGMA synchronous=NORMAL")  # Balance entre rendimiento y seguridad
+                conn.execute("PRAGMA cache_size=10000")  # Cache más grande (10MB)
+                conn.execute("PRAGMA temp_store=MEMORY")  # Usar memoria para temporales
+                conn.execute("PRAGMA mmap_size=268435456")  # 256MB de memory mapping
+                conn.execute("PRAGMA foreign_keys=ON")  # Asegurar integridad referencial
+                
+        except sqlite3.Error as e:
+            print(f"Error optimizando base de datos: {e}")
     
     def save_draw_result(self, result: Dict[str, Any]) -> bool:
         """

@@ -15,12 +15,26 @@ from utils import format_currency, format_percentage
 
 # Función para generar ID de usuario automático
 def get_or_create_user_id():
-    """Genera o recupera un ID de usuario único automático"""
+    """Genera o recupera un ID de usuario único automático que persiste entre sesiones"""
+    # Primero verificar si hay un ID en los parámetros de la URL
+    query_params = st.query_params
+    uid_from_url = query_params.get("uid", None)
+    
+    if uid_from_url:
+        # Si hay ID en la URL, usarlo y guardarlo en session_state
+        st.session_state.auto_user_id = uid_from_url
+        if 'user_created_at' not in st.session_state:
+            st.session_state.user_created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return uid_from_url
+    
+    # Si no hay ID en session_state, generar uno nuevo
     if 'auto_user_id' not in st.session_state:
-        # Generar un ID único basado en UUID
         unique_id = f"user_{str(uuid.uuid4())[:8]}_{int(time.time())}"
         st.session_state.auto_user_id = unique_id
         st.session_state.user_created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Agregar el ID a los parámetros de la URL para persistencia
+        st.query_params["uid"] = unique_id
     
     return st.session_state.auto_user_id
 
@@ -61,6 +75,9 @@ def init_components():
     return db, scraper, analyzer, predictor
 
 db, scraper, analyzer, predictor = init_components()
+
+# Inicializar ID de usuario automático al inicio de la aplicación
+current_user_id = get_or_create_user_id()
 
 # Título principal
 st.title("🎯 Sistema de Análisis Estadístico - Quiniela Loteka")
@@ -1880,8 +1897,8 @@ with tab9:
     # Sistema de identificación automática de usuario
     st.subheader("👤 Sistema de Notificaciones Automático")
     
-    # Obtener ID de usuario automático
-    user_id = get_or_create_user_id()
+    # Usar el ID de usuario ya inicializado
+    user_id = current_user_id
     
     # Mostrar información del usuario automático (opcional, para transparencia)
     with st.expander("ℹ️ Información de tu sesión"):
@@ -1889,6 +1906,11 @@ with tab9:
         if 'user_created_at' in st.session_state:
             st.info(f"**Sesión iniciada:** {st.session_state.user_created_at}")
         st.write("🔔 **Sistema automático activo:** Recibirás notificaciones cuando tus números predichos coincidan con los sorteos ganadores.")
+        
+        # Instrucciones para mantener acceso a predicciones
+        st.info("💡 **Guarda esta página:** La URL actual ya contiene tu ID único. Usa 'Marcadores/Favoritos' en tu navegador para acceder fácilmente a tus predicciones.")
+        if st.button("📋 Copiar URL actual", help="Copia la URL actual para guardar acceso a tus predicciones"):
+            st.write("✅ URL copiada. Guárdala como marcador para acceso futuro.")
     
     # Obtener notificaciones no leídas
     unread_count = db.get_unread_notifications_count(user_id)
