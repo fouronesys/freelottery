@@ -15,6 +15,7 @@ class QuinielaScraperManager:
     def __init__(self):
         # Múltiples fuentes confiables para datos históricos
         self.base_urls = [
+            "https://www.conectate.com.do",  # Nueva fuente principal con más datos históricos
             "https://loteka.com.do",  # Sitio oficial
             "https://www.bolomagico.com",  # Agregador confiable
             "https://loteriasdominicanas.com",  # Fuente secundaria
@@ -32,6 +33,11 @@ class QuinielaScraperManager:
         
         # Patrones mejorados para múltiples fuentes
         self.number_patterns = {
+            'conectate': [
+                r'Quiniela Loteka.*?(\d{2})\s*(\d{2})\s*(\d{2})',
+                r'(\d{2})\s*(\d{2})\s*(\d{2})',  # Patrón para números consecutivos
+                r'quiniela-mega-decenas.*?(\d{2})\s*(\d{2})\s*(\d{2})'
+            ],
             'loteka': [
                 r'(?:1er\.|2do\.|3er\.)\s*(\d{2})',
                 r'quiniela.*?(\d{2})\s*(\d{2})\s*(\d{2})'
@@ -704,7 +710,31 @@ class QuinielaScraperManager:
         """
         endpoints = []
         
-        if "loteka.com.do" in base_url:
+        if "conectate.com.do" in base_url:
+            # Conectate.com.do: iterar día por día para datos históricos
+            current_date = start_date
+            while current_date <= end_date:
+                date_formats = [
+                    current_date.strftime("%d-%m-%Y"),  # 23-09-2025
+                    current_date.strftime("%Y-%m-%d"),  # 2025-09-23
+                ]
+                
+                for date_str in date_formats:
+                    endpoints.extend([
+                        f"{base_url}/loterias/loteka?date={date_str}",
+                        f"{base_url}/loterias/loteka/{date_str}",
+                        f"{base_url}/loterias/loteka/historico?date={date_str}",
+                    ])
+                
+                current_date += timedelta(days=1)  # Iteración día por día
+                
+            # Agregar endpoints base sin fecha específica
+            endpoints.extend([
+                f"{base_url}/loterias/loteka",
+                f"{base_url}/loterias/loteka/quiniela-mega-decenas",
+            ])
+                
+        elif "loteka.com.do" in base_url:
             # Endpoints estáticos para Loteka oficial
             endpoints.extend([
                 f"{base_url}/quiniela",
@@ -786,7 +816,9 @@ class QuinielaScraperManager:
                 clean_content = content
             
             # Parser específico por fuente
-            if "loteka.com.do" in base_url:
+            if "conectate.com.do" in base_url:
+                results = self._parse_conectate_content(clean_content, start_date, end_date)
+            elif "loteka.com.do" in base_url:
                 results = self._parse_loteka_content(clean_content, start_date, end_date)
             elif "bolomagico.com" in base_url:
                 results = self._parse_bolomagico_content(clean_content, start_date, end_date)
@@ -883,5 +915,93 @@ class QuinielaScraperManager:
                                 
         except Exception as e:
             print(f"❌ Error parseando contenido de bolomagico: {e}")
+            
+        return results
+    
+    def _parse_conectate_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """
+        Parser específico para conectate.com.do
+        """
+        results = []
+        
+        try:
+            lines = content.split('\n')
+            current_date = None
+            current_year = datetime.now().year  # Asumir año actual si no se especifica
+            
+            for i, line in enumerate(lines):
+                line = line.strip()
+                
+                # Buscar fechas en formato conectate (22-09)
+                date_patterns = [
+                    r'(\d{1,2})-(\d{1,2})\s',  # Formato DD-MM
+                    r'(\d{1,2})/(\d{1,2})\s',  # Formato DD/MM
+                ]
+                
+                for pattern in date_patterns:
+                    date_match = re.search(pattern, line)
+                    if date_match:
+                        try:
+                            day, month = date_match.groups()
+                            parsed_date = datetime(current_year, int(month), int(day))
+                            
+                            # Si la fecha está en el futuro, usar el año anterior
+                            if parsed_date > datetime.now():
+                                parsed_date = datetime(current_year - 1, int(month), int(day))
+                            
+                            if start_date <= parsed_date <= end_date:
+                                current_date = parsed_date
+                        except (ValueError, IndexError):
+                            continue
+                
+                # Buscar líneas que contengan "Quiniela Loteka" y números
+                if current_date and ('quiniela loteka' in line.lower() or 'quiniela-mega-decenas' in line.lower()):
+                    # Buscar en las próximas líneas los números
+                    for j in range(i, min(i + 5, len(lines))):
+                        check_line = lines[j].strip()
+                        
+                        # Usar patrones específicos de conectate
+                        patterns = self.number_patterns.get('conectate', [])
+                        for pattern in patterns:
+                            matches = re.findall(pattern, check_line)
+                            if matches:
+                                for match in matches:
+                                    if isinstance(match, tuple):
+                                        # Tuple de 3 números
+                                        for pos, number_str in enumerate(match):
+                                            try:
+                                                number = int(number_str)
+                                                if 0 <= number <= 99:
+                                                    results.append({
+                                                        'date': current_date.strftime('%Y-%m-%d'),
+                                                        'number': number,
+                                                        'position': pos + 1,
+                                                        'prize_amount': 0,
+                                                        'draw_type': 'quiniela'
+                                                    })
+                                            except ValueError:
+                                                continue
+                        
+                        # Patrón genérico para números de 2 dígitos espaciados
+                        generic_pattern = r'(\d{2})\s*(\d{2})\s*(\d{2})'
+                        matches = re.findall(generic_pattern, check_line)
+                        if matches and not any(r['date'] == current_date.strftime('%Y-%m-%d') for r in results):
+                            for match_group in matches:
+                                for pos, number_str in enumerate(match_group):
+                                    try:
+                                        number = int(number_str)
+                                        if 0 <= number <= 99:
+                                            results.append({
+                                                'date': current_date.strftime('%Y-%m-%d'),
+                                                'number': number,
+                                                'position': pos + 1,
+                                                'prize_amount': 0,
+                                                'draw_type': 'quiniela'
+                                            })
+                                    except ValueError:
+                                        continue
+                                        
+        except Exception as e:
+            print(f"❌ Error parseando contenido de conectate: {e}")
             
         return results
