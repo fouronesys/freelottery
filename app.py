@@ -84,8 +84,8 @@ st.title("🎯 Sistema de Análisis Estadístico - Quiniela Loteka")
 st.markdown("### Predicción de números basada en análisis de frecuencia histórica")
 
 # === NOTIFICACIONES DEL SISTEMA ===
-# Mostrar notificaciones de éxito del sistema a todos los usuarios
-system_notifications = db.get_system_notifications(unread_only=True, limit=3)
+# Mostrar notificaciones de éxito del sistema a todos los usuarios solo del día actual
+system_notifications = db.get_system_notifications(unread_only=True, limit=3, today_only=True)
 
 if system_notifications:
     st.markdown("---")
@@ -1033,7 +1033,7 @@ with tab7:
         
         if st.button("🚀 Obtener Mejor Jugada para HOY", type="primary", key="today_best"):
             with st.spinner("Analizando todos los patrones para generar la mejor recomendación..."):
-                today_recommendation = analyzer.get_best_play_recommendation()
+                today_recommendation = analyzer.get_best_play_recommendation(days_to_analyze=days_to_analyze)
                 
                 if today_recommendation:
                     # Mostrar fecha y información básica

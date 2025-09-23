@@ -769,12 +769,13 @@ class StatisticalAnalyzer:
             print(f"Error analizando patrones de día del mes: {e}")
             return {}
     
-    def get_best_play_recommendation(self, target_date: Optional[datetime] = None) -> Dict[str, Any]:
+    def get_best_play_recommendation(self, target_date: Optional[datetime] = None, days_to_analyze: int = 180) -> Dict[str, Any]:
         """
         Genera la mejor recomendación de jugada basada en todos los análisis disponibles
         
         Args:
             target_date: Fecha objetivo (por defecto hoy)
+            days_to_analyze: Días de análisis histórico a considerar
             
         Returns:
             Dict con recomendación completa de la mejor jugada del día
@@ -786,23 +787,25 @@ class StatisticalAnalyzer:
             day_of_month = target_date.day
             day_of_week = target_date.strftime('%A')
             
-            # Análisis de frecuencias (últimos 180 días)
-            hot_numbers = self.get_hot_numbers(days=180, limit=10)
-            cold_numbers = self.get_cold_numbers(days=180, limit=10)
+            # Análisis de frecuencias (usar parámetro del usuario)
+            hot_numbers = self.get_hot_numbers(days=days_to_analyze, limit=10)
+            cold_numbers = self.get_cold_numbers(days=days_to_analyze, limit=10)
             
-            # Análisis por día del mes
-            month_patterns = self.analyze_day_of_month_patterns(days=365)
+            # Análisis por día del mes (usar período más amplio)
+            month_analysis_days = max(days_to_analyze, 180)  # Mínimo 180 días para patrones mensuales
+            month_patterns = self.analyze_day_of_month_patterns(days=month_analysis_days)
             day_specific_numbers = month_patterns.get('best_numbers_by_day', {}).get(day_of_month, [])
             
-            # Análisis por día de la semana
-            week_patterns = self.analyze_day_of_week_patterns(days=180)
+            # Análisis por día de la semana (usar parámetro del usuario)
+            week_patterns = self.analyze_day_of_week_patterns(days=days_to_analyze)
             day_names_spanish = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
             weekday_index = target_date.weekday()
             day_name_spanish = day_names_spanish[weekday_index]
             week_specific_data = week_patterns.get(day_name_spanish, {})
             
-            # Análisis de tendencias recientes (últimos 30 días)
-            recent_trends = self.get_temporal_trends(days=30)
+            # Análisis de tendencias recientes (usar tercio del período de análisis o mínimo 14 días)
+            trend_days = max(14, days_to_analyze // 3)
+            recent_trends = self.get_temporal_trends(days=trend_days)
             
             # Sistema de puntuación integrado
             number_scores = {}

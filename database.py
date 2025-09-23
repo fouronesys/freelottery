@@ -442,7 +442,7 @@ class DatabaseManager:
             return None
     
     def get_recent_draws(self, limit: int = 10) -> List[Tuple]:
-        """Obtiene los sorteos más recientes"""
+        """Obtiene los sorteos más recientes de Quiniela"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Habilitar foreign keys
@@ -451,6 +451,7 @@ class DatabaseManager:
                 cursor.execute("""
                 SELECT date, number, position, prize_amount
                 FROM draw_results
+                WHERE draw_type = 'quiniela'
                 ORDER BY date DESC, position
                 LIMIT ?
                 """, (limit,))
@@ -1256,13 +1257,14 @@ class DatabaseManager:
             print(f"Error creando notificación del sistema: {e}")
             return 0
     
-    def get_system_notifications(self, unread_only: bool = False, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_system_notifications(self, unread_only: bool = False, limit: int = 20, today_only: bool = False) -> List[Dict[str, Any]]:
         """
         Obtiene las notificaciones del sistema
         
         Args:
             unread_only: Si solo obtener notificaciones no leídas
             limit: Número máximo de notificaciones a obtener
+            today_only: Si solo obtener notificaciones del día actual
             
         Returns:
             List[Dict]: Lista de notificaciones del sistema
@@ -1279,9 +1281,18 @@ class DatabaseManager:
                 """
                 
                 params: List[Any] = []
+                conditions = []
                 
                 if unread_only:
-                    query += " WHERE is_read = 0"
+                    conditions.append("is_read = 0")
+                
+                if today_only:
+                    today_date = datetime.now().date()
+                    conditions.append("DATE(winning_date) = ?")
+                    params.append(today_date)
+                
+                if conditions:
+                    query += " WHERE " + " AND ".join(conditions)
                 
                 query += " ORDER BY matched_at DESC LIMIT ?"
                 params.append(limit)
