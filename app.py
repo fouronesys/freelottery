@@ -2698,12 +2698,12 @@ with tab10:
         # Análisis de tendencias por períodos (adaptativo)
         if years_available >= 3:  # Al menos 3 años para análisis de evolución
             st.subheader("📈 Evolución Histórica por Períodos")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Análisis por quinquenios
-            st.write("**Análisis por Quinquenios:**")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Análisis por quinquenios
+                st.write("**Análisis por Quinquenios:**")
             quinquennial_data = []
             
             # Ajustar número de períodos basado en datos disponibles
@@ -2745,6 +2745,10 @@ with tab10:
                 # Calcular coeficiente de variación para estabilidad
                 stable_numbers = []
                 
+                # Asegurar que avg_frequency esté definido
+                total_numbers = len(long_term_frequencies)
+                avg_frequency = sum(freq for _, freq, _, _ in long_term_frequencies) / total_numbers if total_numbers > 0 else 0
+                
                 for num, abs_freq, rel_freq, classification in long_term_frequencies:
                     if abs_freq > avg_frequency * 0.8:  # Números con frecuencia alta
                         # Analizar variabilidad en sub-períodos adaptativo
@@ -2771,7 +2775,9 @@ with tab10:
                 
                 for i, (num, freq, cv) in enumerate(stable_numbers[:10]):
                     st.write(f"{i+1}. **{str(num).zfill(2)}** - {freq} veces (CV: {cv:.2f})")
-        else:
+        
+        # Mostrar advertencia si no hay suficientes datos para análisis de evolución
+        if years_available < 3:
             st.warning(f"⚠️ Análisis de evolución requiere al menos 3 años de datos. Datos disponibles: {years_available:.1f} años.")
         
         # Generación de predicciones especializadas
