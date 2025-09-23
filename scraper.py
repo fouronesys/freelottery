@@ -119,7 +119,17 @@ class QuinielaScraperManager:
         
         try:
             # Permitir múltiples fuentes confiables para datos históricos
-            if "loteka.com.do" in base_url:
+            if "conectate.com.do" in base_url:
+                # Conectate.com.do: generar URLs con fechas específicas
+                possible_endpoints = []
+                current_date = start_date
+                while current_date <= end_date and len(possible_endpoints) < 100:  # Limitar para evitar timeout
+                    date_str = current_date.strftime("%d-%m-%Y")
+                    possible_endpoints.append(f"{base_url}/loterias/loteka?date={date_str}")
+                    current_date += timedelta(days=1)
+                # Agregar URL base al final
+                possible_endpoints.append(f"{base_url}/loterias/loteka")
+            elif "loteka.com.do" in base_url:
                 possible_endpoints = [
                     f"{base_url}/quiniela",
                     f"{base_url}/resultados", 
@@ -145,11 +155,15 @@ class QuinielaScraperManager:
                         response = requests.get(endpoint, headers=self.headers, timeout=20)
                         
                         if response.status_code == 200:
-                            # Usar trafilatura para extraer contenido limpio
-                            text_content = trafilatura.extract(response.text)
+                            # Para conectate.com.do usar HTML crudo, para otros usar trafilatura
+                            if "conectate.com.do" in base_url:
+                                content_to_parse = response.text  # HTML crudo para conectate
+                            else:
+                                # Usar trafilatura para extraer contenido limpio
+                                content_to_parse = trafilatura.extract(response.text)
                             
-                            if text_content:
-                                parsed_results = self._parse_lottery_content(text_content, start_date, end_date, endpoint)
+                            if content_to_parse:
+                                parsed_results = self._parse_lottery_content(content_to_parse, start_date, end_date, endpoint)
                                 
                                 if parsed_results:
                                     results.extend(parsed_results)
@@ -188,7 +202,9 @@ class QuinielaScraperManager:
         
         try:
             # Usar parser específico según la fuente
-            if 'loteka.com.do' in source_url.lower():
+            if 'conectate.com.do' in source_url.lower():
+                results.extend(self._parse_conectate_content(content, start_date, end_date))
+            elif 'loteka.com.do' in source_url.lower():
                 results.extend(self._parse_loteka_content(content, start_date, end_date))
                 if not results:
                     results.extend(self._parse_generic_content(content, start_date, end_date))
@@ -711,28 +727,15 @@ class QuinielaScraperManager:
         endpoints = []
         
         if "conectate.com.do" in base_url:
-            # Conectate.com.do: iterar día por día para datos históricos
+            # Conectate.com.do: usar solo URLs que funcionan
             current_date = start_date
-            while current_date <= end_date:
-                date_formats = [
-                    current_date.strftime("%d-%m-%Y"),  # 23-09-2025
-                    current_date.strftime("%Y-%m-%d"),  # 2025-09-23
-                ]
+            while current_date <= end_date and len(endpoints) < 200:  # Limitar para evitar timeout
+                date_str = current_date.strftime("%d-%m-%Y")  # Solo formato DD-MM-YYYY que funciona
+                endpoints.append(f"{base_url}/loterias/loteka?date={date_str}")
+                current_date += timedelta(days=1)
                 
-                for date_str in date_formats:
-                    endpoints.extend([
-                        f"{base_url}/loterias/loteka?date={date_str}",
-                        f"{base_url}/loterias/loteka/{date_str}",
-                        f"{base_url}/loterias/loteka/historico?date={date_str}",
-                    ])
-                
-                current_date += timedelta(days=1)  # Iteración día por día
-                
-            # Agregar endpoints base sin fecha específica
-            endpoints.extend([
-                f"{base_url}/loterias/loteka",
-                f"{base_url}/loterias/loteka/quiniela-mega-decenas",
-            ])
+            # Agregar URL base
+            endpoints.append(f"{base_url}/loterias/loteka")
                 
         elif "loteka.com.do" in base_url:
             # Endpoints estáticos para Loteka oficial
@@ -920,87 +923,92 @@ class QuinielaScraperManager:
     
     def _parse_conectate_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
-        Parser específico para conectate.com.do
+        Parser específico para conectate.com.do usando BeautifulSoup para HTML
         """
         results = []
         
         try:
-            lines = content.split('\n')
-            current_date = None
-            current_year = datetime.now().year  # Asumir año actual si no se especifica
+            from bs4 import BeautifulSoup
             
-            for i, line in enumerate(lines):
-                line = line.strip()
+            # Parse HTML con BeautifulSoup para mejor extracción
+            soup = BeautifulSoup(content, 'html.parser')
+            current_year = datetime.now().year
+            
+            # Buscar todos los elementos que contengan fechas y números
+            all_text = soup.get_text()
+            
+            # Buscar patrones de fecha (22-09) seguidos de números
+            date_number_pattern = r'(\d{1,2})-(\d{1,2}).*?(?:quiniela|loteka).*?(\d{2})\s*(\d{2})\s*(\d{2})'
+            matches = re.findall(date_number_pattern, all_text, re.IGNORECASE | re.DOTALL)
+            
+            for match in matches:
+                try:
+                    day, month, num1, num2, num3 = match
+                    parsed_date = datetime(current_year, int(month), int(day))
+                    
+                    # Si la fecha está en el futuro, usar el año anterior
+                    if parsed_date > datetime.now():
+                        parsed_date = datetime(current_year - 1, int(month), int(day))
+                    
+                    if start_date <= parsed_date <= end_date:
+                        # Agregar los tres números
+                        for pos, number_str in enumerate([num1, num2, num3]):
+                            number = int(number_str)
+                            if 0 <= number <= 99:
+                                results.append({
+                                    'date': parsed_date.strftime('%Y-%m-%d'),
+                                    'number': number,
+                                    'position': pos + 1,
+                                    'prize_amount': 0,
+                                    'draw_type': 'quiniela'
+                                })
+                except (ValueError, IndexError) as e:
+                    continue
+            
+            # Si no se encontraron con el primer patrón, buscar de manera más específica
+            if not results:
+                # Buscar elementos específicos de Quiniela Loteka
+                quiniela_elements = soup.find_all(text=re.compile(r'quiniela\s+loteka', re.I))
                 
-                # Buscar fechas en formato conectate (22-09)
-                date_patterns = [
-                    r'(\d{1,2})-(\d{1,2})\s',  # Formato DD-MM
-                    r'(\d{1,2})/(\d{1,2})\s',  # Formato DD/MM
-                ]
-                
-                for pattern in date_patterns:
-                    date_match = re.search(pattern, line)
-                    if date_match:
-                        try:
+                for element in quiniela_elements:
+                    parent = element.parent if hasattr(element, 'parent') else None
+                    if parent:
+                        parent_text = parent.get_text()
+                        
+                        # Buscar fecha en el contexto del elemento padre
+                        date_match = re.search(r'(\d{1,2})-(\d{1,2})', parent_text)
+                        if date_match:
                             day, month = date_match.groups()
-                            parsed_date = datetime(current_year, int(month), int(day))
-                            
-                            # Si la fecha está en el futuro, usar el año anterior
-                            if parsed_date > datetime.now():
-                                parsed_date = datetime(current_year - 1, int(month), int(day))
-                            
-                            if start_date <= parsed_date <= end_date:
-                                current_date = parsed_date
-                        except (ValueError, IndexError):
-                            continue
-                
-                # Buscar líneas que contengan "Quiniela Loteka" y números
-                if current_date and ('quiniela loteka' in line.lower() or 'quiniela-mega-decenas' in line.lower()):
-                    # Buscar en las próximas líneas los números
-                    for j in range(i, min(i + 5, len(lines))):
-                        check_line = lines[j].strip()
-                        
-                        # Usar patrones específicos de conectate
-                        patterns = self.number_patterns.get('conectate', [])
-                        for pattern in patterns:
-                            matches = re.findall(pattern, check_line)
-                            if matches:
-                                for match in matches:
-                                    if isinstance(match, tuple):
-                                        # Tuple de 3 números
-                                        for pos, number_str in enumerate(match):
-                                            try:
-                                                number = int(number_str)
-                                                if 0 <= number <= 99:
-                                                    results.append({
-                                                        'date': current_date.strftime('%Y-%m-%d'),
-                                                        'number': number,
-                                                        'position': pos + 1,
-                                                        'prize_amount': 0,
-                                                        'draw_type': 'quiniela'
-                                                    })
-                                            except ValueError:
-                                                continue
-                        
-                        # Patrón genérico para números de 2 dígitos espaciados
-                        generic_pattern = r'(\d{2})\s*(\d{2})\s*(\d{2})'
-                        matches = re.findall(generic_pattern, check_line)
-                        if matches and not any(r['date'] == current_date.strftime('%Y-%m-%d') for r in results):
-                            for match_group in matches:
-                                for pos, number_str in enumerate(match_group):
-                                    try:
-                                        number = int(number_str)
-                                        if 0 <= number <= 99:
-                                            results.append({
-                                                'date': current_date.strftime('%Y-%m-%d'),
-                                                'number': number,
-                                                'position': pos + 1,
-                                                'prize_amount': 0,
-                                                'draw_type': 'quiniela'
-                                            })
-                                    except ValueError:
-                                        continue
+                            try:
+                                parsed_date = datetime(current_year, int(month), int(day))
+                                if parsed_date > datetime.now():
+                                    parsed_date = datetime(current_year - 1, int(month), int(day))
+                                
+                                if start_date <= parsed_date <= end_date:
+                                    # Buscar números de 2 dígitos en el contexto
+                                    numbers = re.findall(r'\b(\d{2})\b', parent_text)
+                                    # Filtrar para obtener solo los números de la quiniela (normalmente 3 números consecutivos)
+                                    valid_numbers = [int(n) for n in numbers if 0 <= int(n) <= 99]
+                                    
+                                    # Tomar los primeros 3 números válidos después de la fecha
+                                    date_pos = parent_text.find(f'{day}-{month}')
+                                    if date_pos >= 0:
+                                        text_after_date = parent_text[date_pos:]
+                                        numbers_after_date = re.findall(r'\b(\d{2})\b', text_after_date)
                                         
+                                        for pos, number_str in enumerate(numbers_after_date[:3]):
+                                            number = int(number_str)
+                                            if 0 <= number <= 99:
+                                                results.append({
+                                                    'date': parsed_date.strftime('%Y-%m-%d'),
+                                                    'number': number,
+                                                    'position': pos + 1,
+                                                    'prize_amount': 0,
+                                                    'draw_type': 'quiniela'
+                                                })
+                            except (ValueError, IndexError):
+                                continue
+                                
         except Exception as e:
             print(f"❌ Error parseando contenido de conectate: {e}")
             
