@@ -255,6 +255,127 @@ class DatabaseManager:
             print(f"Error obteniendo sorteos: {e}")
             return []
     
+    def save_multiple_draw_results(self, results: List[Dict[str, Any]]) -> int:
+        """
+        Guarda múltiples resultados de sorteo de manera eficiente (batch saving)
+        
+        Args:
+            results: Lista de diccionarios con datos de sorteos
+            
+        Returns:
+            int: Número de registros guardados exitosamente
+        """
+        if not results:
+            return 0
+            
+        saved_count = 0
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                
+                # Preparar datos para inserción batch
+                batch_data = []
+                for result in results:
+                    # Validar que sea quiniela
+                    draw_type = result.get('draw_type', 'quiniela')
+                    if draw_type != 'quiniela':
+                        print(f"⚠️ Omitiendo resultado no-quiniela: {draw_type}")
+                        continue
+                        
+                    batch_data.append((
+                        result['date'],
+                        result['number'],
+                        result.get('position', 1),
+                        'quiniela',  # Forzar quiniela
+                        result.get('prize_amount', 0)
+                    ))
+                
+                if not batch_data:
+                    print("❌ No hay datos válidos para guardar")
+                    return 0
+                
+                # Inserción batch usando executemany
+                cursor.executemany("""
+                INSERT OR IGNORE INTO draw_results 
+                (date, number, position, draw_type, prize_amount)
+                VALUES (?, ?, ?, ?, ?)
+                """, batch_data)
+                
+                saved_count = cursor.rowcount
+                
+                # Actualizar metadatos
+                cursor.execute("""
+                INSERT OR REPLACE INTO metadata (key, value, updated_at)
+                VALUES ('last_update', ?, CURRENT_TIMESTAMP)
+                """, (datetime.now().isoformat(),))
+                
+                cursor.execute("""
+                INSERT OR REPLACE INTO metadata (key, value, updated_at) 
+                VALUES ('total_records', (SELECT COUNT(*) FROM draw_results), CURRENT_TIMESTAMP)
+                """)
+                
+                conn.commit()
+                
+                print(f"✅ Guardados exitosamente {saved_count} de {len(batch_data)} registros")
+                
+        except sqlite3.Error as e:
+            print(f"❌ Error guardando múltiples resultados: {e}")
+            saved_count = 0
+            
+        return saved_count
+    
+    def get_database_stats(self) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas de la base de datos
+        
+        Returns:
+            Dict con estadísticas de datos disponibles
+        """
+        stats = {
+            'total_records': 0,
+            'unique_dates': 0,
+            'date_range_days': 0,
+            'earliest_date': None,
+            'latest_date': None,
+            'has_720_days': False
+        }
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Total de registros
+                cursor.execute("SELECT COUNT(*) FROM draw_results WHERE draw_type = 'quiniela'")
+                stats['total_records'] = cursor.fetchone()[0]
+                
+                if stats['total_records'] > 0:
+                    # Fechas únicas
+                    cursor.execute("SELECT COUNT(DISTINCT date) FROM draw_results WHERE draw_type = 'quiniela'")
+                    stats['unique_dates'] = cursor.fetchone()[0]
+                    
+                    # Rango de fechas
+                    cursor.execute("""
+                    SELECT MIN(date), MAX(date) FROM draw_results WHERE draw_type = 'quiniela'
+                    """)
+                    earliest, latest = cursor.fetchone()
+                    
+                    if earliest and latest:
+                        stats['earliest_date'] = earliest
+                        stats['latest_date'] = latest
+                        
+                        # Calcular días entre fechas
+                        start = datetime.strptime(earliest, '%Y-%m-%d')
+                        end = datetime.strptime(latest, '%Y-%m-%d')
+                        stats['date_range_days'] = (end - start).days
+                        stats['has_720_days'] = stats['date_range_days'] >= 720
+                        
+        except sqlite3.Error as e:
+            print(f"❌ Error obteniendo estadísticas: {e}")
+            
+        return stats
+    
     def get_number_frequency(self, number: int, days: int = 180) -> Tuple[int, float]:
         """
         Obtiene la frecuencia de un número específico
