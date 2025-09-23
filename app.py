@@ -1426,8 +1426,8 @@ with tab7:
                 help="Cantidad de números a recomendar"
             )
         
-        if st.button("🎯 Generar Recomendaciones Personalizadas", type="secondary"):
-            with st.spinner("Analizando patrones y generando recomendaciones..."):
+        # Generar recomendaciones automáticamente cuando cambien los parámetros
+        with st.spinner("Analizando patrones y generando recomendaciones..."):
                 
                 # 1. Análisis por día de la semana
                 day_patterns = analyzer.analyze_day_of_week_patterns(days=recommendation_period)
