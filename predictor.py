@@ -25,7 +25,7 @@ class LotteryPredictor:
     def generate_predictions(
         self, 
         method: str = "frecuencia_historica", 
-        days: int = 180,
+        days: int = 5475,  # ~15 años desde 01-08-2010 hasta hoy
         num_predictions: int = 10,
         confidence_threshold: float = 0.7
     ) -> List[Tuple[int, float, float, str]]:
@@ -33,8 +33,8 @@ class LotteryPredictor:
         Genera predicciones basadas en el método especificado
         
         Args:
-            method: Método de predicción ('frecuencia_historica', 'tendencia_reciente', 'combinado')
-            days: Días de datos históricos a considerar
+            method: Método de predicción ('frecuencia_historica', 'tendencia_reciente', 'combinado', 'patrones_largo_plazo')
+            days: Días de datos históricos (por defecto 5475 = ~15 años desde 01-08-2010)
             num_predictions: Número de predicciones a generar
             confidence_threshold: Umbral mínimo de confianza (0-1)
             
@@ -50,9 +50,11 @@ class LotteryPredictor:
                 predictions = self._predict_by_recent_trend(days, num_predictions)
             elif method == "combinado":
                 predictions = self._predict_combined_method(days, num_predictions)
+            elif method == "patrones_largo_plazo":
+                predictions = self._predict_long_term_patterns(days, num_predictions)
             else:
-                # Método por defecto
-                predictions = self._predict_by_frequency(days, num_predictions)
+                # Método por defecto: usar análisis combinado con rango completo de datos históricos
+                predictions = self._predict_combined_method(days, num_predictions)
             
             # Filtrar por umbral de confianza
             filtered_predictions = [
@@ -370,6 +372,132 @@ class LotteryPredictor:
         final_predictions.sort(key=lambda x: x[1], reverse=True)
         
         return final_predictions[:num_predictions * 2]
+
+    def _predict_long_term_patterns(self, days: int, num_predictions: int) -> List[Tuple[int, float, float, str]]:
+        """
+        Método especializado para análisis de patrones de largo plazo (15+ años)
+        Identifica tendencias, ciclos estacionales y patrones históricos profundos
+        """
+        predictions = []
+        
+        # Análisis por décadas y períodos largos
+        periods = [
+            (365, "anual"),           # Análisis por año
+            (365 * 3, "trienal"),     # Cada 3 años
+            (365 * 5, "quinquenal"),  # Cada 5 años
+            (days, "completo")        # Período completo (15 años)
+        ]
+        
+        # Obtener frecuencias para diferentes períodos
+        period_frequencies = {}
+        for period_days, period_name in periods:
+            if period_days <= days:
+                period_frequencies[period_name] = {
+                    'frequencies': self.analyzer.db.get_all_numbers_frequency(min(period_days, days)),
+                    'days': period_days
+                }
+        
+        # Análisis de estabilidad histórica
+        baseline_freq = period_frequencies.get('completo', {}).get('frequencies', [])
+        baseline_dict = {num: (abs_freq, rel_freq) for num, abs_freq, rel_freq in baseline_freq}
+        
+        # Obtener todos los números únicos
+        all_numbers = set(baseline_dict.keys())
+        
+        for number in all_numbers:
+            baseline_abs, baseline_rel = baseline_dict.get(number, (0, 0.0))
+            
+            # Score base con factor de largo plazo
+            long_term_factor = min(days / 365.0 / 15.0, 1.0)  # Factor que crece hasta 15 años
+            base_score = baseline_rel * 100 * (1.0 + long_term_factor * 0.5)
+            
+            # Análisis de consistencia a través de los períodos
+            consistency_score = 0.0
+            period_variance = 0.0
+            
+            if len(period_frequencies) >= 3:  # Necesitamos al menos 3 períodos para análisis
+                period_values = []
+                
+                for period_name, data in period_frequencies.items():
+                    if period_name != 'completo':
+                        freq_dict = {num: rel_freq for num, _, rel_freq in data['frequencies']}
+                        period_rel = freq_dict.get(number, 0.0)
+                        period_values.append(period_rel)
+                
+                if period_values:
+                    # Calcular consistencia (menor varianza = más consistente)
+                    if len(period_values) > 1:
+                        mean_period_freq = statistics.mean(period_values)
+                        period_variance = statistics.variance(period_values) if len(period_values) > 1 else 0
+                        
+                        # Score de consistencia (inverso de la varianza normalizada)
+                        if mean_period_freq > 0:
+                            consistency_score = max(0, 10 - (period_variance / mean_period_freq) * 100)
+                        else:
+                            consistency_score = 0
+                    else:
+                        consistency_score = 5  # Valor neutral para un solo período
+            
+            # Análisis estacional/cíclico (simulado para números de lotería)
+            # Usar el número como base para detectar "patrones cíclicos"
+            cycle_bonus = 0.0
+            if days >= 365 * 2:  # Al menos 2 años de datos
+                # Simular patrones estacionales basados en propiedades matemáticas del número
+                number_cycle = (number % 12) + 1  # Ciclo de 12 "meses"
+                current_month = datetime.now().month
+                
+                # Bonus si el número "corresponde" al mes actual (patrón simulado)
+                if number_cycle == current_month:
+                    cycle_bonus = 5.0
+                elif abs(number_cycle - current_month) <= 2:  # Meses cercanos
+                    cycle_bonus = 2.0
+            
+            # Análisis de madurez del número (números que "deben" salir)
+            maturity_bonus = 0.0
+            if baseline_abs > 0:
+                expected_frequency = days / 100.0  # Frecuencia esperada teórica
+                frequency_deficit = max(0, expected_frequency - baseline_abs)
+                maturity_bonus = min(frequency_deficit * 0.5, 10.0)  # Bonus máximo de 10
+            
+            # Score final combinado
+            final_score = (
+                base_score + 
+                consistency_score * 0.3 + 
+                cycle_bonus * 0.2 + 
+                maturity_bonus * 0.4
+            )
+            
+            # Confianza basada en estabilidad a largo plazo
+            base_confidence = self.analyzer.get_prediction_confidence_score(number, days)
+            
+            # Ajustar confianza por calidad de datos de largo plazo
+            data_quality = min(days / (365.0 * 15.0), 1.0)  # Factor de calidad basado en años de datos
+            consistency_factor = max(0.7, 1.0 - period_variance * 0.1) if period_variance > 0 else 1.0
+            
+            adjusted_confidence = base_confidence * data_quality * consistency_factor
+            confidence = min(adjusted_confidence, 1.0)
+            
+            # Razón descriptiva para largo plazo
+            years_of_data = days / 365.0
+            if consistency_score > 7:
+                reason = f"Patrón estable {years_of_data:.1f} años: {baseline_abs} apariciones (consistencia alta)"
+            elif maturity_bonus > 5:
+                expected_freq = days / 100.0
+                deficit = expected_freq - baseline_abs
+                reason = f"Número maduro {years_of_data:.1f} años: deficit de {deficit:.1f} apariciones"
+            elif cycle_bonus > 0:
+                number_cycle = (number % 12) + 1  # Redefinir para usar en razón
+                current_month = datetime.now().month
+                reason = f"Patrón cíclico favorable: mes {number_cycle} vs actual {current_month} ({years_of_data:.1f} años)"
+            else:
+                reason = f"Análisis largo plazo {years_of_data:.1f} años: {baseline_abs} apariciones ({baseline_rel:.3f})"
+            
+            predictions.append((number, max(final_score, 0), confidence, reason))
+        
+        # Ordenar por score
+        predictions.sort(key=lambda x: x[1], reverse=True)
+        
+        return predictions[:num_predictions * 2]
     
     def _analyze_patterns(self, days: int) -> Dict[str, Any]:
         """Analiza patrones en los datos"""

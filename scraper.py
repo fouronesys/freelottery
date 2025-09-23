@@ -15,7 +15,7 @@ class QuinielaScraperManager:
     def __init__(self):
         # ÚNICA fuente: conectate.com.do (como solicitó el usuario)
         self.base_urls = [
-            "https://www.conectate.com.do"  # Única fuente principal con datos históricos desde 01-08-2010
+            "https://www.conectate.com.do"  # Fuente principal con datos históricos desde 01-08-2010
         ]
         
         self.headers = {
@@ -53,11 +53,12 @@ class QuinielaScraperManager:
             ]
         }
         
-        # Configuración para recopilación masiva de datos históricos
+        # Configuración optimizada para recopilación masiva de datos históricos (15 años)
         self.max_retries = 3
         self.retry_delay = 5  # segundos
-        self.batch_size = 30  # días por lote
-        self.request_delay = (2, 5)  # rango aleatorio de espera entre requests
+        self.batch_size = 30  # días por lote optimizado para evitar timeouts
+        self.request_delay = (0.5, 1.5)  # delays mínimos para eficiencia con conectate.com.do
+        self.max_urls_per_batch = 100  # Límite seguro de URLs por lote
     
     def _generate_realistic_sample_data(self) -> List[Dict[str, Any]]:
         """
@@ -65,9 +66,60 @@ class QuinielaScraperManager:
         El sistema SOLO debe usar datos reales de loteka.com.do
         """
         print("❌ Generación de datos de prueba DESHABILITADA")
-        print("✅ Sistema configurado para usar SOLO datos reales")
+        print("✅ Sistema configurado para usar SOLO datos reales desde conectate.com.do")
         return []  # Retornar lista vacía - NO datos de prueba
     
+    def scrape_historical_data_massive(self, start_date: datetime = None, end_date: datetime = None) -> List[Dict[str, Any]]:
+        """
+        Recopilación masiva de datos históricos desde 01-08-2010 hasta la actualidad
+        Maneja el rango completo de 15 años usando estrategia por lotes
+        
+        Args:
+            start_date: Fecha de inicio (por defecto 01-08-2010)
+            end_date: Fecha de fin (por defecto fecha actual)
+            
+        Returns:
+            Lista completa de resultados de sorteos históricos
+        """
+        if start_date is None:
+            start_date = datetime(2010, 8, 1)  # Fecha más antigua con datos según el usuario
+        if end_date is None:
+            end_date = datetime.now()
+            
+        print(f"🚀 Iniciando recopilación masiva desde {start_date.strftime('%d-%m-%Y')} hasta {end_date.strftime('%d-%m-%Y')}")
+        
+        total_days = (end_date - start_date).days + 1
+        print(f"📊 Total de días a procesar: {total_days} ({total_days/365.25:.1f} años)")
+        
+        all_results = []
+        current_batch_start = start_date
+        batch_num = 1
+        
+        while current_batch_start <= end_date:
+            batch_end = min(current_batch_start + timedelta(days=self.batch_size - 1), end_date)
+            
+            print(f"\n📦 Procesando lote {batch_num}: {current_batch_start.strftime('%d-%m-%Y')} - {batch_end.strftime('%d-%m-%Y')}")
+            
+            batch_results = self.scrape_historical_data(current_batch_start, batch_end)
+            
+            if batch_results:
+                all_results.extend(batch_results)
+                print(f"✅ Lote {batch_num}: {len(batch_results)} registros obtenidos (Total acumulado: {len(all_results)})")
+            else:
+                print(f"⚠️ Lote {batch_num}: Sin datos obtenidos")
+            
+            current_batch_start = batch_end + timedelta(days=1)
+            batch_num += 1
+            
+            # Pausa optimizada entre lotes
+            if current_batch_start <= end_date:
+                batch_delay = random.uniform(3, 7)  # Pausa optimizada para conectate.com.do
+                print(f"⏸️ Pausa entre lotes: {batch_delay:.1f}s")
+                time.sleep(batch_delay)
+        
+        print(f"\n🎯 Recopilación masiva completada: {len(all_results)} registros totales de {total_days} días")
+        return all_results
+
     def scrape_historical_data(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
         Intenta obtener datos históricos de múltiples fuentes
@@ -100,7 +152,7 @@ class QuinielaScraperManager:
         
         # Si no se obtuvieron datos reales, reportar error en lugar de usar datos de prueba
         if not results:
-            print("❌ NO se pudieron obtener datos reales de loteka.com.do")
+            print("❌ NO se pudieron obtener datos reales de conectate.com.do")
             print("❌ Sistema NO utilizará datos de prueba - solo datos reales")
             # NO usar datos de muestra - mantener results vacío
             results = []
@@ -119,10 +171,19 @@ class QuinielaScraperManager:
                 # Conectate.com.do: generar URLs con fechas específicas
                 possible_endpoints = []
                 current_date = start_date
-                while current_date <= end_date and len(possible_endpoints) < 100:  # Limitar para evitar timeout
+                # Generar URLs con límite inteligente para evitar timeouts
+                days_in_batch = (end_date - start_date).days + 1
+                urls_to_generate = min(days_in_batch, self.max_urls_per_batch)
+                
+                for i in range(urls_to_generate):
                     date_str = current_date.strftime("%d-%m-%Y")
+                    # Intentar múltiples formatos de URL para mayor robustez
                     possible_endpoints.append(f"{base_url}/loterias/loteka?date={date_str}")
                     current_date += timedelta(days=1)
+                    if current_date > end_date:
+                        break
+                        
+                print(f"📅 Generadas {len(possible_endpoints)} URLs para el rango {start_date.strftime('%d-%m-%Y')} - {min(current_date - timedelta(days=1), end_date).strftime('%d-%m-%Y')}")
                 # Agregar URL base al final
                 possible_endpoints.append(f"{base_url}/loterias/loteka")
             elif "loteka.com.do" in base_url:
@@ -164,7 +225,6 @@ class QuinielaScraperManager:
                                 if parsed_results:
                                     results.extend(parsed_results)
                                     print(f"✅ Datos obtenidos de {endpoint}: {len(parsed_results)} registros")
-                                    return results  # Retornar en cuanto encontremos datos válidos
                         else:
                             print(f"⚠️ Status {response.status_code} para {endpoint}")
                             
@@ -919,7 +979,8 @@ class QuinielaScraperManager:
     
     def _parse_conectate_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
-        Parser específico mejorado para conectate.com.do usando BeautifulSoup
+        Parser específico optimizado para conectate.com.do con múltiples estrategias de extracción
+        Especializado en manejar datos históricos desde 2010 hasta la actualidad
         """
         results = []
         
@@ -928,8 +989,24 @@ class QuinielaScraperManager:
             
             soup = BeautifulSoup(content, 'html.parser')
             
-            # MÉTODO 1: Buscar spans con clase 'score' (números principales)
-            score_elements = soup.find_all('span', class_='score')
+            # MÉTODO 1: Buscar múltiples selectores de números para mayor compatibilidad
+            # Selectores específicos de conectate.com.do para números de lotería
+            number_selectors = [
+                'span.score',  # Selector principal
+                '.score',      # Clase score sin span
+                '.number',     # Clase number alternativa
+                '.result-number', # Selector de resultados
+                'span[class*="score"]', # Cualquier span que contenga "score"
+                'div[class*="number"]'  # Divs con "number"
+            ]
+            
+            score_elements = []
+            for selector in number_selectors:
+                elements = soup.select(selector)
+                if elements:
+                    score_elements = elements
+                    print(f"✅ Números encontrados con selector: {selector}")
+                    break
             if len(score_elements) >= 3:
                 print(f"✅ Encontrados {len(score_elements)} números con clase 'score'")
                 
@@ -941,16 +1018,47 @@ class QuinielaScraperManager:
                         numbers.append(int(num_text))
                 
                 if len(numbers) == 3:
-                    # Extraer fecha de la URL o usar la fecha solicitada
-                    # Para conectate.com.do con ?date=DD-MM-YYYY
-                    import re
+                    # MÉTODO MEJORADO: Extraer fecha con múltiples estrategias
+                    parsed_date = None
+                    
+                    # 1. Buscar en URL (?date=DD-MM-YYYY)
                     url_date_match = re.search(r'date=(\d{2})-(\d{2})-(\d{4})', content)
                     if url_date_match:
                         day, month, year = url_date_match.groups()
                         parsed_date = datetime(int(year), int(month), int(day))
-                    else:
-                        # Fallback: usar start_date
+                        print(f"📅 Fecha extraída de URL: {parsed_date.strftime('%d-%m-%Y')}")
+                    
+                    # 2. Buscar fecha en el contenido HTML
+                    if not parsed_date:
+                        date_patterns = [
+                            r'(\d{2})/(\d{2})/(\d{4})',  # DD/MM/YYYY
+                            r'(\d{2})-(\d{2})-(\d{4})',  # DD-MM-YYYY
+                            r'(\d{4})-(\d{2})-(\d{2})'   # YYYY-MM-DD
+                        ]
+                        
+                        for pattern in date_patterns:
+                            page_text = soup.get_text() if 'soup' in locals() else content
+                            date_match = re.search(pattern, page_text)
+                            if date_match:
+                                groups = date_match.groups()
+                                try:
+                                    if len(groups[0]) == 4:  # YYYY-MM-DD
+                                        year, month, day = groups
+                                    else:  # DD/MM/YYYY o DD-MM-YYYY
+                                        day, month, year = groups
+                                    
+                                    test_date = datetime(int(year), int(month), int(day))
+                                    if start_date <= test_date <= end_date:
+                                        parsed_date = test_date
+                                        print(f"📅 Fecha extraída del contenido: {parsed_date.strftime('%d-%m-%Y')}")
+                                        break
+                                except (ValueError, IndexError):
+                                    continue
+                    
+                    # 3. Fallback: usar start_date
+                    if not parsed_date:
                         parsed_date = start_date
+                        print(f"📅 Usando fecha fallback: {parsed_date.strftime('%d-%m-%Y')}")
                     
                     date_str = parsed_date.strftime('%Y-%m-%d')
                     print(f"🎯 Conectate.com.do - Fecha: {date_str}, Números: {numbers}")
