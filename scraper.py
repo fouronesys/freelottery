@@ -13,13 +13,9 @@ class QuinielaScraperManager:
     """Gestiona el web scraping para obtener datos históricos de Quiniela Loteka"""
     
     def __init__(self):
-        # Múltiples fuentes confiables para datos históricos
+        # ÚNICA fuente: conectate.com.do (como solicitó el usuario)
         self.base_urls = [
-            "https://www.conectate.com.do",  # Nueva fuente principal con más datos históricos
-            "https://loteka.com.do",  # Sitio oficial
-            "https://www.bolomagico.com",  # Agregador confiable
-            "https://loteriasdominicanas.com",  # Fuente secundaria
-            "https://paginasamarillas.com.do"  # Fuente adicional
+            "https://www.conectate.com.do"  # Única fuente principal con datos históricos desde 01-08-2010
         ]
         
         self.headers = {
