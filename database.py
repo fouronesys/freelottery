@@ -182,15 +182,21 @@ class DatabaseManager:
     
     def save_draw_result(self, result: Dict[str, Any]) -> bool:
         """
-        Guarda un resultado de sorteo en la base de datos
+        Guarda un resultado de sorteo SOLO de Quiniela Loteka
         
         Args:
-            result: Diccionario con 'date', 'number', 'position', 'prize_amount'
+            result: Diccionario con 'date', 'number', 'position', 'prize_amount', 'draw_type'
         
         Returns:
-            bool: True si se guardó exitosamente, False si ya existía
+            bool: True si se guardó exitosamente, False si ya existía o fue rechazado
         """
         try:
+            # VALIDACIÓN CRÍTICA: Solo aceptar datos de Quiniela Loteka
+            draw_type = result.get('draw_type', 'quiniela')
+            if draw_type != 'quiniela':
+                print(f"❌ RECHAZADO: Tipo de sorteo no permitido '{draw_type}'. Solo se acepta 'quiniela'")
+                return False
+                
             with sqlite3.connect(self.db_path) as conn:
                 # Habilitar foreign keys
                 conn.execute("PRAGMA foreign_keys = ON")
@@ -198,12 +204,13 @@ class DatabaseManager:
                 
                 cursor.execute("""
                 INSERT OR IGNORE INTO draw_results 
-                (date, number, position, prize_amount)
-                VALUES (?, ?, ?, ?)
+                (date, number, position, draw_type, prize_amount)
+                VALUES (?, ?, ?, ?, ?)
                 """, (
                     result['date'],
                     result['number'],
                     result.get('position', 1),
+                    'quiniela',  # FORZAR siempre 'quiniela'
                     result.get('prize_amount', 0)
                 ))
                 
@@ -238,7 +245,7 @@ class DatabaseManager:
                 cursor.execute("""
                 SELECT date, number, position, prize_amount
                 FROM draw_results
-                WHERE date BETWEEN ? AND ?
+                WHERE date BETWEEN ? AND ? AND draw_type = 'quiniela'
                 ORDER BY date DESC, position
                 """, (start_date.date(), end_date.date()))
                 
@@ -266,7 +273,7 @@ class DatabaseManager:
                 # Frecuencia absoluta
                 cursor.execute("""
                 SELECT COUNT(*) FROM draw_results
-                WHERE number = ? AND date >= ?
+                WHERE number = ? AND date >= ? AND draw_type = 'quiniela'
                 """, (number, cutoff_date.date()))
                 
                 absolute_freq = cursor.fetchone()[0]
@@ -274,7 +281,7 @@ class DatabaseManager:
                 # Total de sorteos
                 cursor.execute("""
                 SELECT COUNT(DISTINCT date) FROM draw_results
-                WHERE date >= ?
+                WHERE date >= ? AND draw_type = 'quiniela'
                 """, (cutoff_date.date(),))
                 
                 total_draws = cursor.fetchone()[0]
@@ -305,7 +312,7 @@ class DatabaseManager:
                 # Total de sorteos únicos en el período
                 cursor.execute("""
                 SELECT COUNT(DISTINCT date) FROM draw_results
-                WHERE date >= ?
+                WHERE date >= ? AND draw_type = 'quiniela'
                 """, (cutoff_date.date(),))
                 
                 total_draws = cursor.fetchone()[0]
@@ -317,7 +324,7 @@ class DatabaseManager:
                 cursor.execute("""
                 SELECT number, COUNT(*) as frequency
                 FROM draw_results
-                WHERE date >= ?
+                WHERE date >= ? AND draw_type = 'quiniela'
                 GROUP BY number
                 ORDER BY frequency DESC
                 """, (cutoff_date.date(),))
@@ -340,7 +347,7 @@ class DatabaseManager:
                 # Habilitar foreign keys
                 conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
-                cursor.execute("SELECT COUNT(DISTINCT date) FROM draw_results")
+                cursor.execute("SELECT COUNT(DISTINCT date) FROM draw_results WHERE draw_type = 'quiniela'")
                 return cursor.fetchone()[0]
         except sqlite3.Error:
             return 0
@@ -355,7 +362,7 @@ class DatabaseManager:
                 cutoff_date = datetime.now() - timedelta(days=days)
                 cursor.execute("""
                 SELECT COUNT(DISTINCT date) FROM draw_results
-                WHERE date >= ?
+                WHERE date >= ? AND draw_type = 'quiniela'
                 """, (cutoff_date.date(),))
                 return cursor.fetchone()[0]
         except sqlite3.Error:
@@ -382,7 +389,7 @@ class DatabaseManager:
                 cursor.execute("""
                 SELECT date, number, position
                 FROM draw_results
-                WHERE date >= ? AND position IS NOT NULL
+                WHERE date >= ? AND position IS NOT NULL AND draw_type = 'quiniela'
                 ORDER BY date DESC, position
                 """, (cutoff_date.date(),))
                 
@@ -502,7 +509,7 @@ class DatabaseManager:
                 # Habilitar foreign keys
                 conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
-                cursor.execute("SELECT DISTINCT number FROM draw_results ORDER BY number")
+                cursor.execute("SELECT DISTINCT number FROM draw_results WHERE draw_type = 'quiniela' ORDER BY number")
                 return [row[0] for row in cursor.fetchall()]
         except sqlite3.Error:
             return []

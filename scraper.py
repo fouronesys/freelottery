@@ -13,9 +13,9 @@ class QuinielaScraperManager:
     """Gestiona el web scraping para obtener datos históricos de Quiniela Loteka"""
     
     def __init__(self):
+        # SOLO fuente oficial de Loteka
         self.base_urls = [
-            "https://loteka.com.do",
-            "https://loteriasdominicanas.com"
+            "https://loteka.com.do"  # Sitio oficial ÚNICAMENTE
         ]
         
         self.headers = {
@@ -79,7 +79,8 @@ class QuinielaScraperManager:
                     'date': current_date.strftime('%Y-%m-%d'),
                     'number': number,
                     'position': draw + 1,
-                    'prize_amount': prize_amount
+                    'prize_amount': prize_amount,
+                    'draw_type': 'quiniela'  # Datos de muestra de Quiniela Loteka
                 })
         
         return sample_results
@@ -132,26 +133,16 @@ class QuinielaScraperManager:
         results = []
         
         try:
-            # Endpoints específicos para cada sitio
+            # Endpoints ÚNICAMENTE de loteka.com.do (fuente oficial)
             if "loteka.com.do" in base_url:
                 possible_endpoints = [
+                    f"{base_url}/quiniela",  # Página específica de Quiniela
                     f"{base_url}",  # Página principal de Loteka
-                    f"{base_url}/quiniela",
-                ]
-            elif "loteriasdominicanas.com" in base_url:
-                possible_endpoints = [
-                    f"{base_url}/loteka/quiniela-mega-decenas",  # Endpoint específico para Quiniela Loteka
-                    f"{base_url}/loteka",
-                    f"{base_url}"
                 ]
             else:
-                possible_endpoints = [
-                    f"{base_url}/quiniela",
-                    f"{base_url}/resultados",
-                    f"{base_url}/loteria/quiniela",
-                    f"{base_url}/resultados/quiniela",
-                    f"{base_url}/loteka/quiniela"
-                ]
+                # RECHAZAR cualquier otra fuente que no sea loteka.com.do
+                print(f"❌ RECHAZADO: Fuente no oficial {base_url}")
+                return []
             
             for endpoint in possible_endpoints:
                 try:
@@ -200,19 +191,16 @@ class QuinielaScraperManager:
             return results
         
         try:
-            # Determinar el tipo de sitio basado en la URL de origen
+            # SOLO procesar si la fuente es loteka.com.do (oficial)
             if 'loteka.com.do' in source_url.lower():
                 results.extend(self._parse_loteka_content(content, start_date, end_date))
-            elif 'loteriasdominicanas.com' in source_url.lower():
-                results.extend(self._parse_loteriasdominicanas_content(content, start_date, end_date))
+                # Si no se encontraron resultados, usar parsing genérico SOLO para Loteka
+                if not results:
+                    results.extend(self._parse_generic_content(content, start_date, end_date))
             else:
-                # Si no se reconoce la URL, intentar ambos parsers
-                results.extend(self._parse_loteka_content(content, start_date, end_date))
-                results.extend(self._parse_loteriasdominicanas_content(content, start_date, end_date))
-            
-            # Si no se encontraron resultados específicos, usar parsing genérico
-            if not results:
-                results.extend(self._parse_generic_content(content, start_date, end_date))
+                # RECHAZAR cualquier fuente que no sea oficial
+                print(f"❌ FUENTE RECHAZADA: {source_url} - Solo se acepta loteka.com.do")
+                return []
         
         except Exception as e:
             print(f"Error parseando contenido: {e}")
@@ -267,7 +255,8 @@ class QuinielaScraperManager:
                                         'date': current_date.strftime('%Y-%m-%d'),
                                         'number': number,
                                         'position': position,
-                                        'prize_amount': 0
+                                        'prize_amount': 0,
+                                        'draw_type': 'quiniela'
                                     }
                                     results.append(result)
                                     print(f"Número encontrado: {line} {number} para fecha {current_date.strftime('%Y-%m-%d')}")
@@ -286,7 +275,8 @@ class QuinielaScraperManager:
                                 'date': current_date.strftime('%Y-%m-%d'),
                                 'number': number,
                                 'position': 1,  # Default position
-                                'prize_amount': 0
+                                'prize_amount': 0,
+                                'draw_type': 'quiniela'
                             }
                             results.append(result)
                             print(f"Número en línea encontrado: {number} para fecha {current_date.strftime('%Y-%m-%d')}")
@@ -328,8 +318,8 @@ class QuinielaScraperManager:
                     except (ValueError, IndexError):
                         pass
                 
-                # Buscar números de quiniela (6 dígitos)
-                if 'quiniela loteka' in line.lower() or 'loteka' in line.lower():
+                # VALIDACIÓN ESTRICTA: Buscar números SOLO de 'quiniela loteka'
+                if 'quiniela loteka' in line.lower() or 'loteka quiniela' in line.lower():
                     number_matches = re.findall(r'(\d{6})', line)
                     for number_str in number_matches:
                         # Dividir el número de 6 dígitos en 3 números de 2 dígitos
@@ -342,8 +332,10 @@ class QuinielaScraperManager:
                                             'date': current_date.strftime('%Y-%m-%d'),
                                             'number': number,
                                             'position': (i // 2) + 1,
-                                            'prize_amount': 0
+                                            'prize_amount': 0,
+                                            'draw_type': 'quiniela'
                                         })
+                                        print(f"📍 Quiniela Loteka encontrada: {number} para fecha {current_date.strftime('%Y-%m-%d')}")
                                 except ValueError:
                                     continue
         
@@ -354,7 +346,7 @@ class QuinielaScraperManager:
     
     def _parse_generic_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
-        Parsing genérico para otros sitios
+        Parsing específico SOLO para Quiniela Loteka (validaciones estrictas)
         """
         results = []
         
@@ -363,7 +355,8 @@ class QuinielaScraperManager:
             current_date = None
             
             for line in lines:
-                line = line.strip().lower()
+                line_original = line.strip()
+                line = line_original.lower()
                 
                 # Buscar fechas en diferentes formatos
                 date_patterns = [
@@ -391,11 +384,11 @@ class QuinielaScraperManager:
                         except (ValueError, IndexError):
                             continue
                 
-                # Si tenemos una fecha válida, buscar números
-                if current_date and ('quiniela' in line or 'resultado' in line or 'ganador' in line):
+                # VALIDACIÓN ESTRICTA: Solo procesar líneas que contengan ESPECÍFICAMENTE "quiniela loteka"
+                if current_date and ('quiniela loteka' in line or 'loteka quiniela' in line):
                     simple_patterns = [r'(\d{2})']
                     for pattern in simple_patterns:
-                        numbers = re.findall(pattern, line)
+                        numbers = re.findall(pattern, line_original)  # Usar línea original para números
                         for i, number_str in enumerate(numbers[:3]):  # Limitar a 3 números por línea
                             try:
                                 number = int(number_str)
@@ -404,14 +397,17 @@ class QuinielaScraperManager:
                                         'date': current_date.strftime('%Y-%m-%d'),
                                         'number': number,
                                         'position': i + 1,
-                                        'prize_amount': 0
+                                        'prize_amount': 0,
+                                        'draw_type': 'quiniela'  # Asegurar que es quiniela
                                     })
+                                    print(f"📍 Quiniela Loteka genérica encontrada: {number} para fecha {current_date.strftime('%Y-%m-%d')}")
                             except ValueError:
                                 continue
         
         except Exception as e:
-            print(f"Error en parsing genérico: {e}")
+            print(f"Error en parsing de Quiniela Loteka: {e}")
         
+        print(f"Total resultados de Quiniela Loteka (genérico): {len(results)}")
         return results
     
     def get_latest_results(self) -> List[Dict[str, Any]]:
@@ -425,7 +421,7 @@ class QuinielaScraperManager:
     
     def validate_scraped_data(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Valida y limpia los datos obtenidos
+        Valida y limpia los datos obtenidos - SOLO datos de Quiniela Loteka
         """
         validated_data = []
         
@@ -438,27 +434,32 @@ class QuinielaScraperManager:
                 # Validar fecha
                 datetime.strptime(item['date'], '%Y-%m-%d')
                 
-                # Validar número
+                # Validar número (debe estar en rango de Quiniela: 0-99)
                 number = int(item['number'])
                 if not (0 <= number <= 99):
                     continue
                 
-                # Validar posición
+                # Validar posición (Quiniela tiene 3 posiciones)
                 position = item.get('position', 1)
-                if not isinstance(position, int) or position < 1:
-                    item['position'] = 1
+                if not isinstance(position, int) or position < 1 or position > 3:
+                    item['position'] = min(max(1, position), 3)
                 
                 # Validar premio
                 prize = item.get('prize_amount', 0)
                 if not isinstance(prize, (int, float)) or prize < 0:
                     item['prize_amount'] = 0
                 
+                # VALIDACIÓN CRÍTICA: Asegurar que es SOLO Quiniela
+                item['draw_type'] = 'quiniela'
+                
                 validated_data.append(item)
+                print(f"✅ Dato de Quiniela Loteka validado: {item['date']} - Número: {item['number']} - Posición: {item['position']}")
                 
             except (ValueError, KeyError) as e:
-                print(f"Error validando item {item}: {e}")
+                print(f"❌ Error validando item {item}: {e}")
                 continue
         
+        print(f"📊 Total datos de Quiniela Loteka validados: {len(validated_data)}")
         return validated_data
     
     def get_scraping_status(self) -> Dict[str, Any]:
