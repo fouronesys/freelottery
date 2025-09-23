@@ -1,0 +1,37 @@
+{
+  "completed_batch_ids": [
+    30
+  ],
+  "session_results": {
+    "session_start": "2025-09-23T21:00:59.863926",
+    "total_batches": 31,
+    "pending_batches": 31,
+    "completed_batches": 2,
+    "total_records": 144,
+    "total_dates": 55,
+    "batch_results": [
+      {
+        "batch_id": 31,
+        "start_date": "2025-06-13",
+        "end_date": "2025-09-23",
+        "priority": 0.9815618221258134,
+        "records_collected": 45,
+        "dates_with_data": 20,
+        "processing_time": 98.44701433181763,
+        "success": true
+      },
+      {
+        "batch_id": 30,
+        "start_date": "2024-12-14",
+        "end_date": "2025-06-12",
+        "priority": 0.9488430947216197,
+        "records_collected": 99,
+        "dates_with_data": 35,
+        "processing_time": 179.7755389213562,
+        "success": true
+      }
+    ]
+  },
+  "last_processed_batch": 30,
+  "last_update": "2025-09-23T21:05:53.088847"
+}
