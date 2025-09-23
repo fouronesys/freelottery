@@ -1,0 +1,32 @@
+{
+  "last_processed_date": "2010-10-29",
+  "completed_batches": 1,
+  "total_batches": 62,
+  "progress_percentage": 1.6129032258064515,
+  "session_results": {
+    "session_start": "2025-09-23T19:30:24.432699",
+    "original_start_date": "2010-08-01",
+    "original_end_date": "2025-09-23",
+    "resumed_from": "2010-08-01",
+    "total_batches": 62,
+    "completed_batches": 1,
+    "total_records_collected": 3,
+    "total_dates_with_data": 1,
+    "batch_results": [
+      {
+        "batch_number": 1,
+        "start_date": "2010-08-01",
+        "end_date": "2010-10-29",
+        "total_days": 90,
+        "records_collected": 3,
+        "dates_with_data": 1,
+        "errors": [],
+        "processing_time": 143.67207741737366,
+        "start_time": "2025-09-23T19:30:24.432993",
+        "end_time": "2025-09-23T19:32:48.105084"
+      }
+    ],
+    "errors": []
+  },
+  "last_update": "2025-09-23T19:32:48.105177"
+}
