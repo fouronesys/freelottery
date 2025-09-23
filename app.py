@@ -74,7 +74,15 @@ def init_components():
     predictor = LotteryPredictor(analyzer)
     return db, scraper, analyzer, predictor
 
+# Inicializar automatización como singleton
+@st.cache_resource
+def init_automation():
+    from automated_collector import AutomatedLotteryCollector
+    collector = AutomatedLotteryCollector()
+    return collector
+
 db, scraper, analyzer, predictor = init_components()
+automated_collector = init_automation()
 
 # Inicializar ID de usuario automático al inicio de la aplicación
 current_user_id = get_or_create_user_id()
@@ -2366,6 +2374,170 @@ with tab9:
                 """)
     else:
         st.info("👤 Por favor, ingresa tu ID de usuario para acceder a tus predicciones y notificaciones.")
+
+# Sistema de Automatización de Datos
+st.markdown("---")
+st.header("🤖 Sistema de Recopilación Automatizada")
+
+with st.container():
+    st.write("**Monitor del progreso hacia 720 días de datos históricos**")
+    
+    # Mostrar estadísticas de la base de datos
+    db_stats = db.get_database_stats()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            label="Total Registros",
+            value=f"{db_stats['total_records']:,}",
+            help="Número total de resultados de sorteos en la base de datos"
+        )
+    
+    with col2:
+        st.metric(
+            label="Fechas Únicas",
+            value=f"{db_stats['unique_dates']:,}",
+            help="Número de días únicos con datos de sorteos"
+        )
+    
+    with col3:
+        st.metric(
+            label="Rango de Días",
+            value=f"{db_stats['date_range_days']:,}",
+            help="Días entre la fecha más antigua y más reciente"
+        )
+    
+    with col4:
+        # Usar unique_dates para progreso correcto
+        progress_pct = min(100, (db_stats['unique_dates'] / 720) * 100)
+        st.metric(
+            label="Progreso 720 días",
+            value=f"{progress_pct:.1f}%",
+            help="Progreso basado en días únicos con datos (métrica correcta)"
+        )
+    
+    # Barra de progreso usando unique_dates (métrica correcta)
+    if db_stats['unique_dates'] > 0:
+        progress_value = min(1.0, db_stats['unique_dates'] / 720)
+        st.progress(progress_value)
+        
+        days_remaining = max(0, 720 - db_stats['unique_dates'])
+        if days_remaining > 0:
+            st.info(f"📈 Faltan {days_remaining} días únicos para alcanzar el objetivo de 720 días")
+            if db_stats['date_range_days'] != db_stats['unique_dates']:
+                gap_days = db_stats['date_range_days'] - db_stats['unique_dates']
+                st.warning(f"⚠️ Detectados {gap_days} días con vacuos de datos en el rango")
+        else:
+            st.success("🎉 ¡Objetivo de 720 días de datos históricos alcanzado!")
+    else:
+        st.progress(0.0)
+        st.info("⏳ Iniciando recopilación de datos históricos...")
+    
+    # Información de fechas
+    if db_stats['earliest_date'] and db_stats['latest_date']:
+        st.write(f"📅 **Rango de datos**: {db_stats['earliest_date']} hasta {db_stats['latest_date']}")
+    
+    # Controles de recopilación manual
+    st.markdown("### 🔧 Controles de Recopilación")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Recopilación Manual de Datos**")
+        
+        # Selector de días para recopilar
+        days_to_collect = st.selectbox(
+            "Días a recopilar",
+            [7, 14, 30, 60, 90, 180],
+            index=2,
+            help="Número de días de datos históricos a recopilar manualmente"
+        )
+        
+        if st.button("📡 Iniciar Recopilación Manual", type="primary"):
+            with st.spinner(f"Recopilando datos de los últimos {days_to_collect} días..."):
+                try:
+                    # Usar el scraper para obtener datos
+                    end_date = datetime.now()
+                    start_date = end_date - timedelta(days=days_to_collect)
+                    
+                    results = scraper.scrape_historical_data(start_date, end_date)
+                    
+                    if results:
+                        saved_count = db.save_multiple_draw_results(results)
+                        if saved_count > 0:
+                            st.success(f"✅ Recopilación exitosa: {saved_count} registros guardados")
+                            st.rerun()
+                        else:
+                            st.info("ℹ️ No se encontraron nuevos datos para el período seleccionado")
+                    else:
+                        st.warning("⚠️ No se pudieron obtener datos. Puede ser debido a problemas de conectividad o disponibilidad de las fuentes.")
+                        
+                except Exception as e:
+                    st.error(f"❌ Error durante la recopilación: {str(e)}")
+    
+    with col2:
+        st.write("**Estado del Sistema**")
+        
+        # Mostrar información del scraper
+        scraper_status = scraper.get_scraping_status()
+        
+        st.write(f"🌐 **Fuentes disponibles**: {scraper_status['sources_available']}")
+        st.write(f"⚡ **Solo datos reales**: {'✅ Sí' if scraper_status['real_data_only'] else '❌ No'}")
+        st.write(f"📊 **Estado**: {scraper_status['status'].title()}")
+        
+        # Botón para verificar fuentes
+        if st.button("🔍 Probar Fuentes", type="secondary"):
+            with st.spinner("Probando conectividad con las fuentes de datos..."):
+                try:
+                    # Probar una recopilación pequeña
+                    today = datetime.now()
+                    yesterday = today - timedelta(days=1)
+                    
+                    test_results = scraper.scrape_historical_data(yesterday, today)
+                    
+                    if test_results:
+                        st.success(f"✅ Fuentes funcionando correctamente - {len(test_results)} registros obtenidos")
+                    else:
+                        st.warning("⚠️ Las fuentes están respondiendo pero no se encontraron datos recientes")
+                        
+                except Exception as e:
+                    st.error(f"❌ Problema con las fuentes: {str(e)}")
+    
+    # Información sobre automatización
+    with st.expander("ℹ️ ¿Cómo funciona la recopilación automatizada?"):
+        st.write("""
+        **Sistema de Recopilación Automatizada de Datos:**
+        
+        🔹 **Objetivo**: Alcanzar 720 días de datos históricos para mejorar la precisión de las predicciones.
+        
+        🔹 **Fuentes Múltiples**: El sistema utiliza múltiples fuentes confiables:
+        - Sitio oficial de Loteka (loteka.com.do)
+        - Agregadores de resultados (bolomagico.com, loteriasdominicanas.com)
+        - Fuentes de respaldo adicionales
+        
+        🔹 **Validación Estricta**: Todos los datos pasan por validación estricta:
+        - Verificación de fechas válidas
+        - Números en rango correcto (0-99)
+        - Posiciones correctas (1ra, 2da, 3ra)
+        - Eliminación automática de duplicados
+        
+        🔹 **Recopilación Inteligente**: 
+        - Manejo robusto de errores con reintentos automáticos
+        - Respeto a las políticas de los sitios web
+        - Procesamiento por lotes para eficiencia
+        
+        🔹 **Progreso Continuo**: 
+        - Recopilación diaria automática de nuevos resultados
+        - Llenado gradual de vacíos en datos históricos
+        - Monitoreo continuo de progreso hacia 720 días
+        
+        **¿Por qué 720 días?**
+        - Aproximadamente 2 años de datos históricos
+        - Suficientes datos para análisis estadístico robusto
+        - Mejor detección de patrones y tendencias
+        - Predicciones más precisas y confiables
+        """)
 
 # Footer
 st.markdown("---")
