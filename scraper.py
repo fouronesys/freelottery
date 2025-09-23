@@ -37,53 +37,17 @@ class QuinielaScraperManager:
             r'ganador.*?(\d{2})',   # Ganador seguido de 2 dígitos
         ]
         
-        # Simulación de datos realistas para desarrollo
-        self.sample_data = self._generate_realistic_sample_data()
+        # NO generar datos de prueba - solo usar datos reales
+        # self.sample_data = self._generate_realistic_sample_data()  # DESHABILITADO
     
     def _generate_realistic_sample_data(self) -> List[Dict[str, Any]]:
         """
-        Genera datos de muestra realistas basados en patrones típicos de lotería
-        Solo se usa cuando no se pueden obtener datos reales
+        MÉTODO DESHABILITADO - NO generar datos de prueba
+        El sistema SOLO debe usar datos reales de loteka.com.do
         """
-        sample_results = []
-        
-        # Números más comunes en loterías (basado en estadísticas reales)
-        weighted_numbers = list(range(0, 100))
-        
-        # Algunos números tienden a salir más frecuentemente en loterías reales
-        frequent_numbers = [7, 13, 23, 27, 32, 42, 45, 67, 77, 88]
-        
-        # Generar datos para los últimos 90 días
-        end_date = datetime.now()
-        
-        for i in range(90):
-            current_date = end_date - timedelta(days=i)
-            
-            # Simular entre 1-3 sorteos por día
-            num_draws = random.choice([1, 1, 1, 2, 2, 3])  # Más probable 1-2 sorteos
-            
-            for draw in range(num_draws):
-                # Elegir número con distribución realista
-                if random.random() < 0.3:  # 30% de probabilidad de número frecuente
-                    number = random.choice(frequent_numbers)
-                else:
-                    number = random.randint(0, 99)
-                
-                # Premio realista
-                prize_amount = random.choice([
-                    50000, 100000, 150000, 200000, 250000, 
-                    300000, 500000, 750000, 1000000
-                ])
-                
-                sample_results.append({
-                    'date': current_date.strftime('%Y-%m-%d'),
-                    'number': number,
-                    'position': draw + 1,
-                    'prize_amount': prize_amount,
-                    'draw_type': 'quiniela'  # Datos de muestra de Quiniela Loteka
-                })
-        
-        return sample_results
+        print("❌ Generación de datos de prueba DESHABILITADA")
+        print("✅ Sistema configurado para usar SOLO datos reales")
+        return []  # Retornar lista vacía - NO datos de prueba
     
     def scrape_historical_data(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
@@ -111,18 +75,12 @@ class QuinielaScraperManager:
                 print(f"Error obteniendo datos de {base_url}: {e}")
                 continue
         
-        # Si no se obtuvieron datos reales, usar datos de muestra
+        # Si no se obtuvieron datos reales, reportar error en lugar de usar datos de prueba
         if not results:
-            print("No se pudieron obtener datos reales. Usando datos de muestra para desarrollo.")
-            
-            # Filtrar datos de muestra por rango de fechas
-            filtered_sample = []
-            for item in self.sample_data:
-                item_date = datetime.strptime(item['date'], '%Y-%m-%d')
-                if start_date <= item_date <= end_date:
-                    filtered_sample.append(item)
-            
-            results = filtered_sample
+            print("❌ NO se pudieron obtener datos reales de loteka.com.do")
+            print("❌ Sistema NO utilizará datos de prueba - solo datos reales")
+            # NO usar datos de muestra - mantener results vacío
+            results = []
         
         return results
     
@@ -238,8 +196,9 @@ class QuinielaScraperManager:
                         print(f"Error parseando fecha: {line}")
                 
                 # Si encontramos indicadores de posición, buscar números en las siguientes líneas
-                if current_date and line in ['1er.', '2do.', '3er.', '4to.', '5er.']:
-                    position = {'1er.': 1, '2do.': 2, '3er.': 3, '4to.': 4, '5er.': 5}.get(line, 0)
+                # SOLO posiciones 1, 2, 3 para Quiniela Loteka
+                if current_date and line in ['1er.', '2do.', '3er.']:
+                    position = {'1er.': 1, '2do.': 2, '3er.': 3}.get(line, 0)
                     
                     # Buscar el número en las siguientes líneas
                     j = i + 1
@@ -439,10 +398,11 @@ class QuinielaScraperManager:
                 if not (0 <= number <= 99):
                     continue
                 
-                # Validar posición (Quiniela tiene 3 posiciones)
+                # Validar posición (Quiniela tiene SOLO 3 posiciones)
                 position = item.get('position', 1)
                 if not isinstance(position, int) or position < 1 or position > 3:
-                    item['position'] = min(max(1, position), 3)
+                    print(f"❌ Posición inválida {position} - RECHAZADO")
+                    continue  # RECHAZAR datos con posiciones inválidas
                 
                 # Validar premio
                 prize = item.get('prize_amount', 0)
@@ -469,7 +429,8 @@ class QuinielaScraperManager:
         status = {
             'sources_available': len(self.base_urls),
             'last_attempt': datetime.now().isoformat(),
-            'sample_data_available': len(self.sample_data),
+            'sample_data_available': 0,  # Ya no hay datos de prueba
+            'real_data_only': True,  # Solo datos reales
             'status': 'ready'
         }
         
