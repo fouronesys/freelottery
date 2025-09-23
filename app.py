@@ -17,8 +17,11 @@ from utils import format_currency, format_percentage
 def get_or_create_user_id():
     """Genera o recupera un ID de usuario único automático que persiste entre sesiones"""
     # Primero verificar si hay un ID en los parámetros de la URL
-    query_params = st.query_params
-    uid_from_url = query_params.get("uid", None)
+    try:
+        query_params = st.experimental_get_query_params()
+        uid_from_url = query_params.get("uid", [None])[0]
+    except:
+        uid_from_url = None
     
     if uid_from_url:
         # Si hay ID en la URL, usarlo y guardarlo en session_state
@@ -34,7 +37,10 @@ def get_or_create_user_id():
         st.session_state.user_created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # Agregar el ID a los parámetros de la URL para persistencia
-        st.query_params["uid"] = unique_id
+        try:
+            st.experimental_set_query_params(uid=unique_id)
+        except:
+            pass  # Si no funciona, continuar sin query params
     
     return st.session_state.auto_user_id
 
@@ -79,6 +85,12 @@ def init_components():
 def init_automation():
     from automated_collector import AutomatedLotteryCollector
     collector = AutomatedLotteryCollector()
+    # Iniciar automatización si no está corriendo
+    try:
+        if not collector.is_running:
+            collector.start_automation("hourly")  # Testing con horario
+    except Exception as e:
+        print(f"Warning: Automatización no iniciada: {e}")
     return collector
 
 db, scraper, analyzer, predictor = init_components()
@@ -333,7 +345,7 @@ with tab1:
                 color_continuous_scale='Reds'
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         
         # Números fríos
         st.subheader("🧊 Números Menos Frecuentes (Últimos 30 días)")
@@ -352,7 +364,7 @@ with tab1:
                 color_continuous_scale='Blues'
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("⚠️ No hay datos históricos disponibles. Haz clic en 'Actualizar Datos Históricos' para comenzar.")
 
@@ -401,7 +413,7 @@ with tab2:
             # Remover columna numérica auxiliar para mostrar
             df_filtered = df_filtered.drop('Frecuencia_Relativa_Num', axis=1)
             
-            st.dataframe(df_filtered, width='stretch')
+            st.dataframe(df_filtered, use_container_width=True)
             
             # Distribución de frecuencias
             st.subheader("📊 Distribución de Frecuencias")
@@ -413,7 +425,7 @@ with tab2:
                 title="Distribución de Frecuencias de Números",
                 labels={'Frecuencia Absoluta': 'Frecuencia', 'count': 'Cantidad de Números'}
             )
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
             
             # Análisis por rangos
             st.subheader("🎯 Análisis por Rangos de Números")
@@ -429,7 +441,7 @@ with tab2:
                     title="Frecuencia Promedio por Rango de Números",
                     labels={'Frecuencia Promedio': 'Frecuencia Promedio'}
                 )
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("⚠️ No hay datos suficientes para el análisis. Actualiza los datos históricos primero.")
 
@@ -508,7 +520,7 @@ with tab3:
                     st.subheader("📋 Detalles de Predicciones")
                     # Mostrar solo columnas formateadas para la tabla
                     display_df = df_pred[['Número', 'Puntuación', 'Confianza', 'Razón']]
-                    st.dataframe(display_df, width='stretch')
+                    st.dataframe(display_df, use_container_width=True)
                     
                     # Gráfico de confianza
                     fig = px.bar(
@@ -520,7 +532,7 @@ with tab3:
                         color='Puntuación_Num',
                         color_continuous_scale='Viridis'
                     )
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.error("❌ No se pudieron generar predicciones. Verifica los datos.")
         
@@ -534,7 +546,7 @@ with tab3:
             if 'Premio' in df_recent.columns:
                 df_recent['Premio'] = df_recent['Premio'].apply(format_currency)
             
-            st.dataframe(df_recent, width='stretch')
+            st.dataframe(df_recent, use_container_width=True)
     else:
         st.warning("⚠️ Se requieren datos históricos para generar predicciones.")
 
@@ -557,7 +569,7 @@ with tab4:
                 title="Tendencia de Frecuencia Promedio en el Tiempo",
                 labels={'Frecuencia_Promedio': 'Frecuencia Promedio'}
             )
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         
         # Correlaciones
         st.subheader("🔗 Análisis de Correlaciones")
@@ -574,7 +586,7 @@ with tab4:
             df_corr = pd.DataFrame.from_records(top_correlations, columns=['Número 1', 'Número 2', 'Correlación', 'Significancia'])
             df_corr['Correlación'] = df_corr['Correlación'].apply(lambda x: f"{x:.3f}")
             
-            st.dataframe(df_corr, width='stretch')
+            st.dataframe(df_corr, use_container_width=True)
         
         # Estadísticas de rendimiento
         st.subheader("⚡ Estadísticas de Rendimiento")
@@ -660,7 +672,7 @@ with tab5:
                     labels={'Total Sorteos': 'Cantidad de Sorteos'},
                     category_orders={'Día': day_order}
                 )
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
             
             with col2:
                 # Gráfico de números únicos por día
@@ -674,10 +686,10 @@ with tab5:
                     color_continuous_scale='Blues',
                     category_orders={'Día': day_order}
                 )
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
             
             # Tabla resumen
-            st.dataframe(df_days, width='stretch')
+            st.dataframe(df_days, use_container_width=True)
         
         # Análisis mensual
         st.subheader("📆 Patrones por Mes del Año")
@@ -714,9 +726,9 @@ with tab5:
                     category_orders={'Mes': spanish_month_order}
                 )
                 fig.update_xaxes(tickangle=45)
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
                 
-                st.dataframe(df_months, width='stretch')
+                st.dataframe(df_months, use_container_width=True)
         
         # Tendencias EWMA
         st.subheader("📈 Tendencias EWMA (Promedio Móvil Exponencial)")
@@ -756,9 +768,9 @@ with tab5:
                 color='Tendencia EWMA',
                 color_continuous_scale='Viridis'
             )
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
             
-            st.dataframe(df_trends, width='stretch')
+            st.dataframe(df_trends, use_container_width=True)
         
         # Detección de cambios significativos
         st.subheader("🔍 Cambios Significativos en Frecuencias")
@@ -794,12 +806,12 @@ with tab5:
             with col1:
                 if len(incrementos) > 0:
                     st.subheader("⬆️ Mayores Incrementos")
-                    st.dataframe(incrementos.head(10), width='stretch')
+                    st.dataframe(incrementos.head(10), use_container_width=True)
             
             with col2:
                 if len(disminuciones) > 0:
                     st.subheader("⬇️ Mayores Disminuciones")
-                    st.dataframe(disminuciones.head(10), width='stretch')
+                    st.dataframe(disminuciones.head(10), use_container_width=True)
             
             # Gráfico de cambios
             if len(df_changes) > 0:
@@ -823,7 +835,7 @@ with tab5:
                     x0=0, y0=0, x1=max_val, y1=max_val,
                     line=dict(color="gray", dash="dash")
                 )
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No se detectaron cambios significativos en las frecuencias en este período.")
     
@@ -882,7 +894,7 @@ with tab6:
                 
                 with col1:
                     st.subheader("🏆 Mejores Pares")
-                    st.dataframe(df_pairs.head(20), width='stretch')
+                    st.dataframe(df_pairs.head(20), use_container_width=True)
                 
                 with col2:
                     # Gráfico de barras de mejores pares
@@ -895,7 +907,7 @@ with tab6:
                         labels={'Frecuencia': 'Veces que Aparecieron Juntos'}
                     )
                     fig.update_xaxes(tickangle=45)
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No se encontraron pares con la frecuencia mínima especificada.")
         else:
@@ -937,7 +949,7 @@ with tab6:
                 
                 with col1:
                     st.subheader("🔄 Transiciones Más Frecuentes")
-                    st.dataframe(df_transitions.head(20), width='stretch')
+                    st.dataframe(df_transitions.head(20), use_container_width=True)
                 
                 with col2:
                     # Gráfico de transiciones por posición
@@ -951,7 +963,7 @@ with tab6:
                             labels={'Frecuencia': 'Cantidad de Transiciones'}
                         )
                         fig.update_xaxes(tickangle=45)
-                        st.plotly_chart(fig, width='stretch')
+                        st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("No se pudieron calcular transiciones para el período seleccionado.")
         
@@ -1024,7 +1036,7 @@ with tab6:
                     }
                 )
                 fig.update_xaxes(tickangle=45)
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No se encontraron patrones con la frecuencia mínima especificada.")
     
@@ -1309,7 +1321,7 @@ with tab7:
                                         color='Frecuencia',
                                         color_continuous_scale='viridis'
                                     )
-                                    st.plotly_chart(fig, width='stretch')
+                                    st.plotly_chart(fig, use_container_width=True)
                         
                         # Recomendación específica
                         confidence = 'Alta' if stats['total_draws'] >= 10 else 'Media' if stats['total_draws'] >= 5 else 'Baja'
@@ -1354,7 +1366,7 @@ with tab7:
                         
                         if table_data:
                             df_month = pd.DataFrame(table_data)
-                            st.dataframe(df_month, width='stretch')
+                            st.dataframe(df_month, use_container_width=True)
         
         st.divider()
         
@@ -1508,7 +1520,7 @@ with tab7:
                         })
                     
                     df_detailed = pd.DataFrame(detailed_data)
-                    st.dataframe(df_detailed, width='stretch')
+                    st.dataframe(df_detailed, use_container_width=True)
                     
                     # Gráfico de puntuaciones
                     fig = px.bar(
@@ -1520,7 +1532,7 @@ with tab7:
                         color='Puntuación',
                         color_continuous_scale='viridis'
                     )
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
                     
                     # Panel de información del método
                     with st.expander("ℹ️ Metodología de Recomendaciones"):
@@ -1648,7 +1660,7 @@ with tab8:
                                 })
                             
                             df_predictions = pd.DataFrame(detailed_predictions)
-                            st.dataframe(df_predictions, width='stretch')
+                            st.dataframe(df_predictions, use_container_width=True)
                         
                         # Estadísticas del modelo
                         st.subheader("📊 Estadísticas del Modelo")
@@ -1686,7 +1698,7 @@ with tab8:
                                 color='Puntuación',
                                 color_continuous_scale='plasma'
                             )
-                            st.plotly_chart(fig, width='stretch')
+                            st.plotly_chart(fig, use_container_width=True)
                     
                     else:
                         st.error("No se pudo generar la fórmula predictiva.")
@@ -1721,7 +1733,7 @@ with tab8:
                                     y='Correlación',
                                     title="Función de Autocorrelación (ACF)"
                                 )
-                                st.plotly_chart(fig, width='stretch')
+                                st.plotly_chart(fig, use_container_width=True)
                         
                         if autocorr_results['significant_lags']:
                             st.info(f"Lags significativos detectados: {', '.join(map(str, autocorr_results['significant_lags']))}")
@@ -1763,7 +1775,7 @@ with tab8:
                                 })
                             
                             df_cycles = pd.DataFrame(cycles_data)
-                            st.dataframe(df_cycles, width='stretch')
+                            st.dataframe(df_cycles, use_container_width=True)
                         
                         # Análisis de tendencias
                         if ts_results['trend_analysis']:
@@ -1816,7 +1828,7 @@ with tab8:
                             title="Distribución de Números por Clusters",
                             hover_data=['Cluster']
                         )
-                        st.plotly_chart(fig, width='stretch')
+                        st.plotly_chart(fig, use_container_width=True)
                     
                     else:
                         st.warning("No se pudo realizar el análisis de clustering.")
@@ -1868,7 +1880,7 @@ with tab8:
                         ]
                         
                         df_tests = pd.DataFrame(test_details)
-                        st.dataframe(df_tests, width='stretch')
+                        st.dataframe(df_tests, use_container_width=True)
                         
                         # Estadísticas de secuencia
                         st.subheader("📊 Estadísticas de la Secuencia")
