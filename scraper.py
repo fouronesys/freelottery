@@ -919,93 +919,84 @@ class QuinielaScraperManager:
     
     def _parse_conectate_content(self, content: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
-        Parser específico para conectate.com.do usando BeautifulSoup para HTML
+        Parser específico mejorado para conectate.com.do usando BeautifulSoup
         """
         results = []
         
         try:
             from bs4 import BeautifulSoup
             
-            # Parse HTML con BeautifulSoup para mejor extracción
             soup = BeautifulSoup(content, 'html.parser')
-            current_year = datetime.now().year
             
-            # Buscar todos los elementos que contengan fechas y números
-            all_text = soup.get_text()
-            
-            # Buscar patrones de fecha (22-09) seguidos de números
-            date_number_pattern = r'(\d{1,2})-(\d{1,2}).*?(?:quiniela|loteka).*?(\d{2})\s*(\d{2})\s*(\d{2})'
-            matches = re.findall(date_number_pattern, all_text, re.IGNORECASE | re.DOTALL)
-            
-            for match in matches:
-                try:
-                    day, month, num1, num2, num3 = match
-                    parsed_date = datetime(current_year, int(month), int(day))
-                    
-                    # Si la fecha está en el futuro, usar el año anterior
-                    if parsed_date > datetime.now():
-                        parsed_date = datetime(current_year - 1, int(month), int(day))
-                    
-                    if start_date <= parsed_date <= end_date:
-                        # Agregar los tres números
-                        for pos, number_str in enumerate([num1, num2, num3]):
-                            number = int(number_str)
-                            if 0 <= number <= 99:
-                                results.append({
-                                    'date': parsed_date.strftime('%Y-%m-%d'),
-                                    'number': number,
-                                    'position': pos + 1,
-                                    'prize_amount': 0,
-                                    'draw_type': 'quiniela'
-                                })
-                except (ValueError, IndexError) as e:
-                    continue
-            
-            # Si no se encontraron con el primer patrón, buscar de manera más específica
-            if not results:
-                # Buscar elementos específicos de Quiniela Loteka
-                quiniela_elements = soup.find_all(text=re.compile(r'quiniela\s+loteka', re.I))
+            # MÉTODO 1: Buscar spans con clase 'score' (números principales)
+            score_elements = soup.find_all('span', class_='score')
+            if len(score_elements) >= 3:
+                print(f"✅ Encontrados {len(score_elements)} números con clase 'score'")
                 
-                for element in quiniela_elements:
-                    parent = element.parent if hasattr(element, 'parent') else None
-                    if parent:
-                        parent_text = parent.get_text()
-                        
-                        # Buscar fecha en el contexto del elemento padre
-                        date_match = re.search(r'(\d{1,2})-(\d{1,2})', parent_text)
-                        if date_match:
-                            day, month = date_match.groups()
-                            try:
-                                parsed_date = datetime(current_year, int(month), int(day))
-                                if parsed_date > datetime.now():
-                                    parsed_date = datetime(current_year - 1, int(month), int(day))
-                                
-                                if start_date <= parsed_date <= end_date:
-                                    # Buscar números de 2 dígitos en el contexto
-                                    numbers = re.findall(r'\b(\d{2})\b', parent_text)
-                                    # Filtrar para obtener solo los números de la quiniela (normalmente 3 números consecutivos)
-                                    valid_numbers = [int(n) for n in numbers if 0 <= int(n) <= 99]
-                                    
-                                    # Tomar los primeros 3 números válidos después de la fecha
-                                    date_pos = parent_text.find(f'{day}-{month}')
-                                    if date_pos >= 0:
-                                        text_after_date = parent_text[date_pos:]
-                                        numbers_after_date = re.findall(r'\b(\d{2})\b', text_after_date)
-                                        
-                                        for pos, number_str in enumerate(numbers_after_date[:3]):
-                                            number = int(number_str)
-                                            if 0 <= number <= 99:
-                                                results.append({
-                                                    'date': parsed_date.strftime('%Y-%m-%d'),
-                                                    'number': number,
-                                                    'position': pos + 1,
-                                                    'prize_amount': 0,
-                                                    'draw_type': 'quiniela'
-                                                })
-                            except (ValueError, IndexError):
-                                continue
-                                
-        except Exception as e:
-            print(f"❌ Error parseando contenido de conectate: {e}")
+                # Extraer los 3 primeros números
+                numbers = []
+                for elem in score_elements[:3]:
+                    num_text = elem.get_text().strip()
+                    if num_text.isdigit() and len(num_text) == 2:
+                        numbers.append(int(num_text))
+                
+                if len(numbers) == 3:
+                    # Extraer fecha de la URL o usar la fecha solicitada
+                    # Para conectate.com.do con ?date=DD-MM-YYYY
+                    import re
+                    url_date_match = re.search(r'date=(\d{2})-(\d{2})-(\d{4})', content)
+                    if url_date_match:
+                        day, month, year = url_date_match.groups()
+                        parsed_date = datetime(int(year), int(month), int(day))
+                    else:
+                        # Fallback: usar start_date
+                        parsed_date = start_date
+                    
+                    date_str = parsed_date.strftime('%Y-%m-%d')
+                    print(f"🎯 Conectate.com.do - Fecha: {date_str}, Números: {numbers}")
+                    
+                    # Agregar los tres números con sus posiciones
+                    for pos, number in enumerate(numbers):
+                        if 0 <= number <= 99:
+                            results.append({
+                                'date': date_str,
+                                'number': number,
+                                'position': pos + 1,
+                                'prize_amount': 0,
+                                'draw_type': 'quiniela'
+                            })
+                    
+                    return results
             
+            # MÉTODO 2: Si no hay spans con 'score', buscar patrón de 3 números consecutivos
+            all_text = soup.get_text()
+            three_number_pattern = r'(\d{2})\s*(\d{2})\s*(\d{2})'
+            matches = re.findall(three_number_pattern, all_text)
+            
+            if matches:
+                print(f"✅ Encontrados {len(matches)} patrones de 3 números")
+                
+                # Usar el primer patrón válido
+                for match in matches:
+                    num1, num2, num3 = [int(n) for n in match]
+                    if all(0 <= n <= 99 for n in [num1, num2, num3]):
+                        
+                        # Usar start_date como fecha
+                        date_str = start_date.strftime('%Y-%m-%d')
+                        print(f"🎯 Conectate.com.do - Fecha: {date_str}, Números: {[num1, num2, num3]}")
+                        
+                        for pos, number in enumerate([num1, num2, num3]):
+                            results.append({
+                                'date': date_str,
+                                'number': number,
+                                'position': pos + 1,
+                                'prize_amount': 0,
+                                'draw_type': 'quiniela'
+                            })
+                        
+                        return results
+                        
+        except Exception as e:
+            print(f"❌ Error parseando conectate.com.do: {e}")
+        
         return results
