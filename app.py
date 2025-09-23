@@ -38,10 +38,10 @@ def get_or_create_user_id():
     
     return st.session_state.auto_user_id
 
-# Caching para análisis complejos
-@st.cache_data(ttl=3600)  # Cache por 1 hora
+# Caching para análisis complejos con diferenciación por parámetros
+@st.cache_data(ttl=1800, show_spinner=False)  # Cache por 30 minutos, más frecuente actualización
 def cached_complex_analysis(analysis_type: str, days: int):
-    """Cache para análisis estadísticos complejos"""
+    """Cache para análisis estadísticos complejos con mejor diferenciación de parámetros"""
     analyzer = StatisticalAnalyzer(DatabaseManager())
     
     if analysis_type == "autocorrelation":
@@ -384,11 +384,11 @@ with tab2:
             
             # Aplicar ordenamiento
             if sort_by == "Frecuencia Absoluta":
-                df_filtered = df_filtered.sort_values(by='Frecuencia Absoluta', ascending=False)
+                df_filtered = df_filtered.sort_values(['Frecuencia Absoluta'], ascending=[False])
             elif sort_by == "Número":
-                df_filtered = df_filtered.sort_values(by='Número', ascending=True)
+                df_filtered = df_filtered.sort_values(['Número'], ascending=[True])
             else:
-                df_filtered = df_filtered.sort_values(by='Frecuencia_Relativa_Num', ascending=False)
+                df_filtered = df_filtered.sort_values(['Frecuencia_Relativa_Num'], ascending=[False])
             
             # Remover columna numérica auxiliar para mostrar
             df_filtered = df_filtered.drop('Frecuencia_Relativa_Num', axis=1)
@@ -452,12 +452,27 @@ with tab3:
         
         if st.button("🎯 Generar Predicciones", type="primary"):
             with st.spinner("Generando predicciones..."):
+                # Generar predicciones sin cache para asegurar variabilidad
+                # Mapeo correcto de métodos para evitar problemas con acentos
+                method_mapping = {
+                    "frecuencia histórica": "frecuencia_historica",
+                    "tendencia reciente": "tendencia_reciente", 
+                    "combinado": "combinado"
+                }
+                method_key = method_mapping.get(prediction_method.lower(), "frecuencia_historica")
+                
+                # Convertir umbral de confianza de % a decimal
+                confidence_decimal = confidence_threshold / 100.0
+                
                 predictions = predictor.generate_predictions(
-                    method=prediction_method.lower().replace(" ", "_"),
+                    method=method_key,
                     days=days_to_analyze,
                     num_predictions=num_predictions,
-                    confidence_threshold=confidence_threshold
+                    confidence_threshold=confidence_decimal
                 )
+                
+                # Debug info para mostrar parámetros utilizados
+                st.sidebar.info(f"🔍 Parámetros utilizados:\n- Método: {prediction_method} ({method_key})\n- Días: {days_to_analyze}\n- Umbral: {confidence_threshold}% ({confidence_decimal:.2f})\n- Predicciones: {num_predictions}")
                 
                 if predictions:
                     st.success("✅ Predicciones generadas exitosamente")

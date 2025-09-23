@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Tuple, Dict, Any, Optional
 import statistics
 import random
+import math
 from analyzer import StatisticalAnalyzer
 
 class LotteryPredictor:
@@ -15,10 +16,10 @@ class LotteryPredictor:
         
         # Pesos optimizados para diferentes métodos de predicción
         self.method_weights = {
-            'frequency': 0.35,     # Peso de la frecuencia histórica
-            'trend': 0.35,         # Peso de la tendencia reciente (aumentado)
-            'pattern': 0.25,       # Peso de patrones detectados (aumentado)
-            'randomness': 0.05     # Factor de aleatoriedad (reducido)
+            'frequency': 0.40,     # Peso de la frecuencia histórica
+            'trend': 0.40,         # Peso de la tendencia reciente 
+            'pattern': 0.15,       # Peso de patrones detectados 
+            'randomness': 0.05     # Factor de determinismo (reducido)
         }
     
     def generate_predictions(
@@ -72,7 +73,7 @@ class LotteryPredictor:
             return []
     
     def _predict_by_frequency(self, days: int, num_predictions: int) -> List[Tuple[int, float, float, str]]:
-        """Predicción basada en frecuencia histórica"""
+        """Predicción basada en frecuencia histórica mejorada"""
         predictions = []
         
         # Obtener frecuencias de todos los números
@@ -81,30 +82,46 @@ class LotteryPredictor:
         if not all_frequencies:
             return []
         
-        # Calcular estadísticas
+        # Calcular estadísticas mejoradas
         frequencies = [freq for _, freq, _ in all_frequencies]
         mean_freq = statistics.mean(frequencies)
         std_freq = statistics.stdev(frequencies) if len(frequencies) > 1 else 0
         
+        # Factor de ajuste basado en días para mayor variabilidad
+        days_factor = 1.0 + (days / 365.0)  # Más días = más peso a frecuencias establecidas
+        period_adjustment = math.sin(days / 30.0) * 0.1  # Variación cíclica basada en período
+        
         for number, abs_freq, rel_freq in all_frequencies:
-            # Calcular puntuación basada en frecuencia
-            score = rel_freq * 100  # Convertir a porcentaje base
+            # Calcular puntuación base mejorada
+            base_score = rel_freq * 100 * days_factor
             
-            # Ajustar por desviación del promedio
+            # Ajustar por desviación del promedio con factor temporal
             if std_freq > 0:
                 z_score = (abs_freq - mean_freq) / std_freq
-                score += z_score * 10  # Bonus por estar sobre el promedio
+                z_bonus = z_score * (15 + period_adjustment * 5)  # Bonus variable por período
+                base_score += z_bonus
+            
+            # Bonus adicional por estabilidad en períodos largos
+            if days > 90 and abs_freq > mean_freq:
+                stability_bonus = (abs_freq / mean_freq - 1) * 10 * (days / 180.0)
+                base_score += stability_bonus
+            
+            # Penalty por períodos cortos si no es muy frecuente
+            if days < 60 and abs_freq < mean_freq:
+                short_period_penalty = (mean_freq - abs_freq) / mean_freq * 5
+                base_score -= short_period_penalty
             
             # Calcular confianza
             confidence = self.analyzer.get_prediction_confidence_score(number, days)
             
-            # Razón de la predicción
+            # Razón más descriptiva
             if abs_freq > mean_freq:
-                reason = f"Número caliente: {abs_freq} apariciones ({rel_freq:.1%})"
+                freq_ratio = abs_freq / mean_freq
+                reason = f"Alta frecuencia: {abs_freq} apariciones ({rel_freq:.1%}, {freq_ratio:.1f}x promedio, {days}d)"
             else:
-                reason = f"Frecuencia: {abs_freq} apariciones ({rel_freq:.1%})"
+                reason = f"Frecuencia estable: {abs_freq} apariciones ({rel_freq:.1%}, {days}d)"
             
-            predictions.append((number, max(score, 0), confidence, reason))
+            predictions.append((number, max(base_score, 0), confidence, reason))
         
         # Ordenar por puntuación
         predictions.sort(key=lambda x: x[1], reverse=True)
@@ -112,15 +129,32 @@ class LotteryPredictor:
         return predictions[:num_predictions * 2]  # Retornar más para filtrado posterior
     
     def _predict_by_recent_trend(self, days: int, num_predictions: int) -> List[Tuple[int, float, float, str]]:
-        """Predicción mejorada basada en tendencia reciente con análisis de momentum"""
+        """Predicción mejorada basada en tendencia reciente con análisis de momentum adaptativo"""
         predictions = []
         
-        # Análisis de tendencia múltiple con diferentes ventanas de tiempo
-        windows = [
-            (min(15, days // 4), "muy reciente"),
-            (min(30, days // 2), "reciente"),
-            (min(60, days * 3 // 4), "medio plazo")
-        ]
+        # Análisis de tendencia múltiple adaptativo según el período
+        if days <= 60:
+            # Períodos cortos: enfoque en tendencias muy recientes
+            windows = [
+                (min(7, days // 3), "ultra reciente"),
+                (min(15, days // 2), "muy reciente"),
+                (min(30, days), "reciente")
+            ]
+        elif days <= 180:
+            # Períodos medios: balance entre reciente y estabilidad
+            windows = [
+                (min(15, days // 6), "muy reciente"),
+                (min(30, days // 3), "reciente"),
+                (min(60, days * 2 // 3), "medio plazo")
+            ]
+        else:
+            # Períodos largos: más ventanas para análisis profundo
+            windows = [
+                (min(15, days // 8), "muy reciente"),
+                (min(30, days // 4), "reciente"),
+                (min(60, days // 2), "medio plazo"),
+                (min(90, days * 3 // 4), "largo plazo")
+            ]
         
         # Obtener frecuencias para cada ventana
         window_data = {}
@@ -205,13 +239,19 @@ class LotteryPredictor:
             if not recent_rel:
                 recent_rel = window_dicts.get('reciente', {}).get(number, (0, 0.0))[1]
             
-            # Calcular score mejorado con múltiples factores
-            base_score = recent_rel * 40  # Score base de frecuencia reciente
-            momentum_bonus = momentum_score * 30  # Bonus por momentum positivo
-            acceleration_bonus = acceleration_score * 20  # Bonus por aceleración
-            consistency_bonus = trend_consistency * 10  # Bonus por consistencia
+            # Calcular score mejorado con múltiples factores adaptativo por período
+            period_multiplier = 1.0 + (days / 365.0) * 0.5  # Períodos largos dan más peso a consistencia
+            recency_weight = max(0.3, 1.0 - (days / 365.0) * 0.7)  # Períodos cortos dan más peso a recencia
             
-            score = base_score + momentum_bonus + acceleration_bonus + consistency_bonus
+            base_score = recent_rel * 40 * recency_weight  # Score base adaptativo
+            momentum_bonus = momentum_score * (30 + days / 10.0)  # Bonus escalado por período
+            acceleration_bonus = acceleration_score * (20 + days / 15.0)  # Aceleración más importante en períodos largos
+            consistency_bonus = trend_consistency * 10 * period_multiplier  # Consistencia más valiosa en análisis largos
+            
+            # Bonus adicional por período específico para diferenciación
+            period_specific_bonus = math.cos(days / 45.0) * 5  # Variación periódica para diferenciar resultados
+            
+            score = base_score + momentum_bonus + acceleration_bonus + consistency_bonus + period_specific_bonus
             score = max(score, 0)
             
             # Confianza mejorada
@@ -223,15 +263,16 @@ class LotteryPredictor:
             adjusted_confidence = base_confidence * confidence_multiplier
             confidence = min(adjusted_confidence, 1.0)
             
-            # Razón mejorada
+            # Razón mejorada con información de período
             if momentum_score > 0.01:
-                reason = f"Momentum ascendente: +{momentum_score:.3f} (consistencia: {trend_consistency:.1%})"
+                reason = f"Momentum ascendente: +{momentum_score:.3f} (consistencia: {trend_consistency:.1%}, {days}d análisis)"
             elif momentum_score < -0.01:
-                reason = f"Momentum descendente: {momentum_score:.3f}"
+                reason = f"Momentum descendente: {momentum_score:.3f} (período: {days}d)"
             elif recent_rel > baseline_rel:
-                reason = f"Por encima del promedio: {recent_rel:.3f} vs {baseline_rel:.3f}"
+                improvement_rate = (recent_rel - baseline_rel) / baseline_rel * 100
+                reason = f"Mejora reciente: {recent_rel:.3f} vs {baseline_rel:.3f} (+{improvement_rate:.1f}%, {days}d)"
             else:
-                reason = f"Actividad reciente: {recent_rel:.3f} frecuencia relativa"
+                reason = f"Actividad reciente: {recent_rel:.3f} frecuencia relativa (análisis {days}d)"
             
             predictions.append((number, score, confidence, reason))
         
@@ -247,27 +288,41 @@ class LotteryPredictor:
         freq_predictions = self._predict_by_frequency(days, num_predictions * 2)
         trend_predictions = self._predict_by_recent_trend(days, num_predictions * 2)
         
-        # Combinar predicciones
+        # Combinar predicciones con variabilidad mejorada por parámetros
         combined_scores = {}
         combined_confidence = {}
         combined_reasons = {}
         
+        # Ajustar pesos dinámicamente basado en el período de análisis
+        if days <= 60:
+            # Períodos cortos: más peso a tendencias
+            freq_weight = 0.30
+            trend_weight = 0.50
+        elif days <= 180:
+            # Períodos medios: balance
+            freq_weight = 0.40
+            trend_weight = 0.40
+        else:
+            # Períodos largos: más peso a frecuencia histórica
+            freq_weight = 0.50
+            trend_weight = 0.30
+        
         # Procesar predicciones por frecuencia
         for number, score, confidence, reason in freq_predictions:
-            combined_scores[number] = score * self.method_weights['frequency']
-            combined_confidence[number] = confidence * self.method_weights['frequency']
-            combined_reasons[number] = f"Frecuencia: {reason[:30]}..."
+            combined_scores[number] = score * freq_weight
+            combined_confidence[number] = confidence * freq_weight
+            combined_reasons[number] = f"Freq({days}d): {reason[:25]}..."
         
         # Agregar predicciones por tendencia
         for number, score, confidence, reason in trend_predictions:
             if number in combined_scores:
-                combined_scores[number] += score * self.method_weights['trend']
-                combined_confidence[number] += confidence * self.method_weights['trend']
-                combined_reasons[number] += f" | Tendencia: {reason[:20]}..."
+                combined_scores[number] += score * trend_weight
+                combined_confidence[number] += confidence * trend_weight
+                combined_reasons[number] += f" | Trend: {reason[:20]}..."
             else:
-                combined_scores[number] = score * self.method_weights['trend']
-                combined_confidence[number] = confidence * self.method_weights['trend']
-                combined_reasons[number] = f"Tendencia: {reason}"
+                combined_scores[number] = score * trend_weight
+                combined_confidence[number] = confidence * trend_weight
+                combined_reasons[number] = f"Tendencia({days}d): {reason}"
         
         # Agregar factor de patrones
         patterns = self._analyze_patterns(days)
@@ -275,10 +330,17 @@ class LotteryPredictor:
             pattern_bonus = self._get_pattern_bonus(number, patterns)
             combined_scores[number] += pattern_bonus * self.method_weights['pattern']
         
-        # Agregar factor de aleatoriedad controlada más conservador
+        # Agregar factor de variabilidad determinística basada en parámetros
+        # Usar días como base para hacer la variabilidad reproducible pero variable por parámetros
         for number in combined_scores:
-            randomness_factor = random.uniform(0.95, 1.05)  # Factor más conservador
-            combined_scores[number] *= randomness_factor
+            # Factor determinístico basado en días y número para variabilidad consistente
+            period_hash = (number * days + days) % 1000
+            deterministic_factor = 1.0 + (period_hash / 5000.0 - 0.1)  # ±10% basado en parámetros
+            combined_scores[number] *= deterministic_factor
+            
+            # Bonus adicional por interacción número-período para más variabilidad
+            interaction_bonus = math.sin((number + days) / 50.0) * 2.0
+            combined_scores[number] += interaction_bonus
         
         # Aplicar normalización de scores para mejor distribución
         if combined_scores:
