@@ -1,0 +1,23 @@
+{
+  "processed_years": [
+    2024,
+    2025
+  ],
+  "year_results": [
+    {
+      "year": 2025,
+      "status": "skipped",
+      "existing_records": 69,
+      "new_records": 0
+    },
+    {
+      "year": 2024,
+      "status": "completed",
+      "existing_records": 0,
+      "new_records": 72,
+      "processing_time": 152.09428691864014
+    }
+  ],
+  "total_new_records": 72,
+  "last_update": "2025-09-23T19:41:04.137188"
+}
