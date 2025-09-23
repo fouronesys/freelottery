@@ -161,10 +161,10 @@ class AutomatedLotteryCollector:
             'last_collection': self.last_collection_time.isoformat() if self.last_collection_time else None,
             'is_running': self.is_running,
             'progress_to_720_days': {
-                'current_days': db_stats['date_range_days'],
+                'current_days': db_stats['unique_dates'],
                 'target_days': 720,
-                'percentage': min(100, (db_stats['date_range_days'] / 720) * 100),
-                'days_remaining': max(0, 720 - db_stats['date_range_days'])
+                'percentage': min(100, (db_stats['unique_dates'] / 720) * 100),
+                'days_remaining': max(0, 720 - db_stats['unique_dates'])
             }
         }
     
@@ -185,7 +185,7 @@ class AutomatedLotteryCollector:
         # Mostrar estadísticas
         status = self.get_collection_status()
         progress = status['progress_to_720_days']['percentage']
-        logger.info(f"📊 Progreso hacia 720 días: {progress:.1f}% ({status['database_stats']['date_range_days']} días actuales)")
+        logger.info(f"📊 Progreso hacia 720 días: {progress:.1f}% ({status['database_stats']['unique_dates']} días únicos actuales)")
     
     def start_automation(self, schedule_interval: str = "daily"):
         """

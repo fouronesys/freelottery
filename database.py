@@ -462,7 +462,19 @@ class DatabaseManager:
             return []
     
     def get_total_draws(self) -> int:
-        """Obtiene el número total de sorteos registrados"""
+        """Obtiene el número total de registros de sorteos"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                # Habilitar foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM draw_results WHERE draw_type = 'quiniela'")
+                return cursor.fetchone()[0]
+        except sqlite3.Error:
+            return 0
+    
+    def get_unique_dates_count(self) -> int:
+        """Obtiene el número de días únicos con datos"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Habilitar foreign keys
