@@ -251,25 +251,53 @@ if st.sidebar.button("🔄 Actualizar Datos Históricos", type="primary"):
         except Exception as e:
             st.sidebar.error(f"❌ Error al actualizar datos: {str(e)}")
 
+# Obtener datos básicos del sistema antes de configuración
+total_draws = db.get_total_draws()
+recent_draws = db.get_draws_count_last_days(30)
+
 # Configuración de análisis
 st.sidebar.subheader("📊 Parámetros de Análisis")
+# Verificar cobertura real de datos antes de establecer límites
+coverage_days = db.get_data_coverage_days() if total_draws > 0 else 0
+max_days_available = min(5475, coverage_days)  # Máximo real disponible
+
+# Configurar slider con validación robusta
+min_slider_value = 30
+max_slider_value = max(min_slider_value, max_days_available) if max_days_available > 0 else 365
+default_slider_value = max(min_slider_value, min(365, max_days_available)) if max_days_available > 0 else 180
+
 days_to_analyze = st.sidebar.slider(
     "Días a analizar",
-    min_value=30,
-    max_value=365,
-    value=180,
+    min_value=min_slider_value,
+    max_value=max_slider_value,
+    value=default_slider_value,
     step=30,
-    help="Número de días hacia atrás para el análisis estadístico"
+    help=f"Número de días hacia atrás para el análisis estadístico. Datos disponibles: {coverage_days} días ({coverage_days/365.25:.1f} años)"
 )
+
+# Mostrar advertencia si no hay suficientes datos para análisis de largo plazo
+if coverage_days < 1825:  # Menos de 5 años
+    st.sidebar.warning(f"⚠️ Datos limitados: {coverage_days/365.25:.1f} años. Para análisis óptimo se recomiendan 5+ años.")
+
+# Determinar métodos disponibles basado en cobertura de datos
+available_methods = ["Frecuencia Histórica", "Tendencia Reciente", "Combinado"]
+default_index = 2  # "Combinado" por defecto
+
+# Solo agregar "Patrones de Largo Plazo" si hay suficientes datos (5+ años)
+if coverage_days >= 1825:  # 5 años mínimos
+    available_methods.append("Patrones de Largo Plazo")
+    if coverage_days >= 3650:  # 10+ años, hacer Largo Plazo predeterminado
+        default_index = 3
 
 prediction_method = st.sidebar.selectbox(
     "Método de Predicción",
-    ["Frecuencia Histórica", "Tendencia Reciente", "Combinado"],
-    help="Método utilizado para generar las predicciones"
+    available_methods,
+    index=default_index,
+    help=f"Método utilizado para generar las predicciones. Patrones de Largo Plazo requiere 5+ años (disponible: {coverage_days/365.25:.1f} años)."
 )
 
 # Pestañas principales
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "📈 Dashboard Principal",
     "🔢 Análisis de Números",
     "🎯 Predicciones",
@@ -278,17 +306,15 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "🤝 Co-ocurrencia y Patrones",
     "📅 Recomendaciones por Día",
     "🧠 Análisis Estadístico Complejo",
-    "📩 Mis Predicciones"
+    "📩 Mis Predicciones",
+    "📈 Patrones de 15 Años"
 ])
 
 with tab1:
     st.header("📈 Dashboard Principal")
     
-    # Estadísticas generales
+    # Estadísticas generales (usar datos ya obtenidos)
     col1, col2, col3, col4 = st.columns(4)
-    
-    total_draws = db.get_total_draws()
-    recent_draws = db.get_draws_count_last_days(30)
     
     with col1:
         st.metric(
@@ -477,7 +503,8 @@ with tab3:
                 method_mapping = {
                     "frecuencia histórica": "frecuencia_historica",
                     "tendencia reciente": "tendencia_reciente", 
-                    "combinado": "combinado"
+                    "combinado": "combinado",
+                    "patrones de largo plazo": "patrones_largo_plazo"
                 }
                 method_key = method_mapping.get(prediction_method.lower(), "frecuencia_historica")
                 
@@ -2550,6 +2577,312 @@ with st.container():
         - Mejor detección de patrones y tendencias
         - Predicciones más precisas y confiables
         """)
+
+with tab10:
+    st.header("📈 Análisis de Patrones Históricos de Largo Plazo")
+    
+    if total_draws > 0:
+        # Verificar cobertura real de datos
+        available_coverage = db.get_data_coverage_days()
+        years_available = available_coverage / 365.25
+        
+        # Determinar el período de análisis basado en datos disponibles
+        if available_coverage >= 5475:  # 15+ años
+            long_term_days = 5475
+            analysis_period = "15 años"
+            quality_level = "Óptimo"
+        elif available_coverage >= 3650:  # 10+ años
+            long_term_days = 3650
+            analysis_period = "10 años"
+            quality_level = "Excelente"
+        elif available_coverage >= 1825:  # 5+ años
+            long_term_days = 1825
+            analysis_period = "5 años"
+            quality_level = "Bueno"
+        else:
+            long_term_days = available_coverage
+            analysis_period = f"{years_available:.1f} años"
+            quality_level = "Limitado"
+        
+        # Mostrar información de cobertura con código de colores
+        if years_available >= 10:
+            st.success(f"🔬 **Análisis de {analysis_period}**: Utilizando {available_coverage} días de datos históricos. Calidad del análisis: **{quality_level}**")
+        elif years_available >= 5:
+            st.info(f"🔬 **Análisis de {analysis_period}**: Utilizando {available_coverage} días de datos históricos. Calidad del análisis: **{quality_level}**")
+        else:
+            st.warning(f"⚠️ **Análisis de {analysis_period}**: Solo {available_coverage} días disponibles. Calidad del análisis: **{quality_level}**. Se recomienda obtener más datos históricos para análisis más precisos.")
+        
+        # Crear dos columnas para métricas principales
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📊 Estadísticas de Largo Plazo")
+            
+            st.metric(
+                label="Período de Análisis",
+                value=analysis_period,
+                delta=f"Calidad: {quality_level}",
+                help=f"Basado en {available_coverage} días de datos históricos disponibles"
+            )
+            
+            # Análisis de frecuencia del período disponible
+            long_term_frequencies = analyzer.calculate_all_frequencies(days=long_term_days)
+            if long_term_frequencies:
+                total_numbers = len(long_term_frequencies)
+                avg_frequency = sum(freq for _, freq, _, _ in long_term_frequencies) / total_numbers
+                
+                st.metric(
+                    label="Frecuencia Promedio",
+                    value=f"{avg_frequency:.1f}",
+                    help=f"Promedio de apariciones por número en {analysis_period}"
+                )
+                
+                # Encontrar número más y menos frecuente
+                sorted_freq = sorted(long_term_frequencies, key=lambda x: x[1])
+                most_frequent = sorted_freq[-1]
+                least_frequent = sorted_freq[0]
+                
+                st.metric(
+                    label="Número Más Frecuente",
+                    value=f"{most_frequent[0]:02d}",
+                    delta=f"{most_frequent[1]} veces",
+                    help=f"Aparició {most_frequent[1]} veces en {analysis_period}"
+                )
+        
+        with col2:
+            st.subheader("🔥 Análisis de Consistencia")
+            
+            # Análisis por períodos disponibles (adaptativo)
+            periods = []
+            if available_coverage >= 1825:  # 5+ años
+                periods.append((min(365 * 5, available_coverage), "Últimos 5 años"))
+            if available_coverage >= 3650:  # 10+ años
+                periods.append((min(365 * 10, available_coverage), "Últimos 10 años"))
+            if available_coverage >= 5475:  # 15+ años
+                periods.append((long_term_days, "Período completo"))
+            elif available_coverage > 365:  # Al menos 1 año
+                periods.append((long_term_days, f"Período completo ({analysis_period})"))
+            
+            st.write("**Números más consistentes por período:**")
+            
+            for period_days, period_name in periods:
+                period_freq = analyzer.get_hot_numbers(days=min(period_days, available_coverage), limit=3)
+                if period_freq:
+                    top_nums = [str(num).zfill(2) for num, _, _ in period_freq[:3]]
+                    st.write(f"• **{period_name}**: {', '.join(top_nums)}")
+        
+        # Visualización de patrones estacionales (solo si hay suficientes datos)
+        if years_available >= 2:  # Al menos 2 años para patrones estacionales
+            st.subheader("📅 Patrones Estacionales y Cíclicos")
+            
+            # Análisis por meses del año
+            monthly_analysis = analyzer.analyze_day_of_month_patterns(days=long_term_days)
+            if monthly_analysis:
+                df_monthly = pd.DataFrame(monthly_analysis)
+                
+                if not df_monthly.empty and 'Mes' in df_monthly.columns:
+                    fig_monthly = px.bar(
+                        df_monthly,
+                        x='Mes',
+                        y='Frecuencia_Promedio',
+                        title=f"Frecuencia Promedio por Mes del Año ({analysis_period})",
+                        labels={'Frecuencia_Promedio': 'Frecuencia Promedio', 'Mes': 'Mes'},
+                        color='Frecuencia_Promedio',
+                        color_continuous_scale='viridis'
+                    )
+                    fig_monthly.update_layout(showlegend=False)
+                    st.plotly_chart(fig_monthly, use_container_width=True)
+        else:
+            st.warning("⚠️ Análisis estacional requiere al menos 2 años de datos. Datos disponibles: {:.1f} años.".format(years_available))
+        
+        # Análisis de tendencias por períodos (adaptativo)
+        if years_available >= 3:  # Al menos 3 años para análisis de evolución
+            st.subheader("📈 Evolución Histórica por Períodos")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Análisis por quinquenios
+            st.write("**Análisis por Quinquenios:**")
+            quinquennial_data = []
+            
+            # Ajustar número de períodos basado en datos disponibles
+            max_periods = min(3, int(years_available // 2))  # Máximo 3 períodos, mínimo 2 años por período
+            
+            for i in range(max_periods):
+                if years_available >= 10:  # 5 años por período si hay 10+ años
+                    years_per_period = 5
+                elif years_available >= 6:  # 3 años por período si hay 6+ años
+                    years_per_period = 3
+                else:  # 2 años por período
+                    years_per_period = 2
+                
+                start_years_ago = i * years_per_period
+                end_years_ago = (i + 1) * years_per_period
+                period_days = 365 * years_per_period
+                
+                if start_years_ago * 365 < available_coverage:
+                    period_freq = analyzer.get_hot_numbers(days=min(period_days, available_coverage - start_years_ago * 365), limit=5)
+                    if period_freq:
+                        period_name = f"Años {start_years_ago+1}-{min(end_years_ago, int(years_available))}"
+                        avg_freq = sum(freq for _, freq, _ in period_freq) / len(period_freq)
+                        quinquennial_data.append({
+                            'Período': period_name,
+                            'Frecuencia_Promedio': avg_freq,
+                            'Top_Número': str(period_freq[0][0]).zfill(2)
+                        })
+            
+            if quinquennial_data:
+                df_quinquennial = pd.DataFrame(quinquennial_data)
+                st.dataframe(df_quinquennial, use_container_width=True)
+        
+        with col2:
+            # Análisis de estabilidad de números (solo si hay suficientes datos)
+            st.write(f"**Números Más Estables ({analysis_period}):**")
+            
+            # Obtener números que han sido consistentemente frecuentes
+            if long_term_frequencies:
+                # Calcular coeficiente de variación para estabilidad
+                stable_numbers = []
+                
+                for num, abs_freq, rel_freq, classification in long_term_frequencies:
+                    if abs_freq > avg_frequency * 0.8:  # Números con frecuencia alta
+                        # Analizar variabilidad en sub-períodos adaptativo
+                        sub_periods = [365, min(365*2, available_coverage), min(365*3, available_coverage), min(365*5, available_coverage)]
+                        sub_periods = [sp for sp in sub_periods if sp <= available_coverage and sp >= 365]  # Filtrar períodos válidos
+                        frequencies = []
+                        
+                        for sub_days in sub_periods:
+                            if sub_days <= available_coverage:
+                                sub_freq = analyzer.db.get_all_numbers_frequency(sub_days)
+                                sub_dict = {n: f for n, f, _ in sub_freq}
+                                frequencies.append(sub_dict.get(num, 0))
+                        
+                        if len(frequencies) > 1:
+                            import statistics
+                            try:
+                                cv = statistics.stdev(frequencies) / statistics.mean(frequencies) if statistics.mean(frequencies) > 0 else float('inf')
+                                stable_numbers.append((num, abs_freq, cv))
+                            except:
+                                continue
+                
+                # Ordenar por estabilidad (menor coeficiente de variación)
+                stable_numbers.sort(key=lambda x: x[2])
+                
+                for i, (num, freq, cv) in enumerate(stable_numbers[:10]):
+                    st.write(f"{i+1}. **{str(num).zfill(2)}** - {freq} veces (CV: {cv:.2f})")
+        else:
+            st.warning(f"⚠️ Análisis de evolución requiere al menos 3 años de datos. Datos disponibles: {years_available:.1f} años.")
+        
+        # Generación de predicciones especializadas
+        st.subheader(f"🎯 Predicciones Especializadas ({analysis_period})")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col2:
+            st.write("**Configuración:**")
+            long_term_predictions_count = st.slider(
+                "Número de predicciones",
+                min_value=5,
+                max_value=25,
+                value=15,
+                help=f"Predicciones basadas en análisis de {analysis_period}"
+            )
+            
+            # Determinar método de predicción basado en datos disponibles
+            if years_available >= 5:
+                prediction_method_to_use = "patrones_largo_plazo"
+                confidence_threshold = 0.6
+            else:
+                prediction_method_to_use = "combinado"
+                confidence_threshold = 0.7
+            
+            if st.button(f"🚀 Generar Predicciones de {analysis_period}", type="primary"):
+                with st.spinner(f"Analizando {analysis_period} de patrones..."):
+                    # Usar método apropiado según datos disponibles
+                    long_predictions = predictor.generate_predictions(
+                        method=prediction_method_to_use,
+                        days=long_term_days,
+                        num_predictions=long_term_predictions_count,
+                        confidence_threshold=confidence_threshold
+                    )
+                    
+                    if long_predictions:
+                        st.session_state.long_term_predictions = long_predictions
+                        st.success("✅ Predicciones de largo plazo generadas")
+                        st.rerun()
+        
+        with col1:
+            if 'long_term_predictions' in st.session_state:
+                predictions_data = st.session_state.long_term_predictions
+                
+                st.write(f"**🎯 Predicciones Basadas en {analysis_period} de Datos:**")
+                
+                # Mostrar en formato de cards
+                for i, (number, score, confidence, reason) in enumerate(predictions_data[:long_term_predictions_count]):
+                    with st.container():
+                        col_num, col_details = st.columns([1, 3])
+                        
+                        with col_num:
+                            st.metric(
+                                label=f"#{i+1}",
+                                value=str(number).zfill(2),
+                                delta=f"{confidence:.1%}"
+                            )
+                        
+                        with col_details:
+                            st.caption(f"**Score:** {score:.2f}")
+                            st.caption(f"**Razón:** {reason}")
+                        
+                        if i < len(predictions_data) - 1:
+                            st.divider()
+                
+                # Gráfico de confianza para predicciones de largo plazo
+                if len(predictions_data) > 0:
+                    df_pred_long = pd.DataFrame(predictions_data, columns=['Número', 'Score', 'Confianza', 'Razón'])
+                    
+                    fig_long = px.bar(
+                        df_pred_long.head(long_term_predictions_count),
+                        x='Número',
+                        y='Score',
+                        title=f"Predicciones de Largo Plazo - Análisis de {analysis_period}",
+                        labels={'Score': 'Puntuación de Predicción'},
+                        color='Confianza',
+                        color_continuous_scale='plasma'
+                    )
+                    st.plotly_chart(fig_long, use_container_width=True)
+            else:
+                st.info(f"👆 Haz clic en 'Generar Predicciones de {analysis_period}' para ver predicciones especializadas basadas en {analysis_period} de datos.")
+        
+        # Insights y recomendaciones
+        st.subheader("💡 Insights de Largo Plazo")
+        
+        insights_col1, insights_col2 = st.columns(2)
+        
+        with insights_col1:
+            st.info("""
+            **🔍 Patrones Identificados:**
+            
+            • Los análisis de 15 años permiten identificar patrones estacionales y cíclicos que no son visibles en períodos cortos
+            
+            • La consistencia de números a través de múltiples años indica patrones estadísticos más confiables
+            
+            • Las tendencias de largo plazo ayudan a filtrar variaciones aleatorias de corto plazo
+            """)
+        
+        with insights_col2:
+            st.success("""
+            **📈 Ventajas del Análisis de 15 Años:**
+            
+            • **Mayor precisión** en la identificación de números "realmente" frecuentes vs. rachas temporales
+            
+            • **Detección de ciclos** estacionales y patrones que se repiten en períodos largos
+            
+            • **Filtrado de ruido** estadístico para obtener señales más claras
+            """)
+    
+    else:
+        st.warning("⚠️ Se requieren datos históricos para realizar el análisis de largo plazo. Por favor, actualiza los datos históricos primero.")
 
 # Footer
 st.markdown("---")
