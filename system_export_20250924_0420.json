@@ -1,0 +1,136 @@
+{
+  "performance": {
+    "period": {
+      "days": 90,
+      "start_date": "2025-06-26",
+      "end_date": "2025-09-24"
+    },
+    "data_summary": {
+      "total_draws": 102,
+      "unique_numbers": 62,
+      "unique_dates": 34,
+      "average_draws_per_day": 3.0
+    },
+    "data_quality": {
+      "completeness": 62.0,
+      "consistency": "good",
+      "coverage_days": 34,
+      "total_days": 90,
+      "data_density": 37.8
+    },
+    "recent_activity": {
+      "last_7_days": 18,
+      "daily_average": 2.6,
+      "last_update": "2025-09-23"
+    },
+    "cache_status": {
+      "recent_entries": 0,
+      "medium_entries": 1,
+      "long_entries": 0
+    }
+  },
+  "patterns": {
+    "analysis_period": 180,
+    "total_draws": 162,
+    "digit_patterns": {
+      "units_distribution": {
+        "6": 20,
+        "9": 19,
+        "4": 19,
+        "8": 19,
+        "1": 19,
+        "0": 18,
+        "7": 16,
+        "2": 12,
+        "3": 10,
+        "5": 10
+      },
+      "tens_distribution": {
+        "6": 21,
+        "1": 19,
+        "9": 17,
+        "3": 17,
+        "2": 17,
+        "7": 17,
+        "0": 16,
+        "8": 15,
+        "4": 12,
+        "5": 11
+      },
+      "favorite_units": [
+        [
+          6,
+          20
+        ],
+        [
+          9,
+          19
+        ],
+        [
+          4,
+          19
+        ]
+      ],
+      "favorite_tens": [
+        [
+          6,
+          21
+        ],
+        [
+          1,
+          19
+        ],
+        [
+          9,
+          17
+        ]
+      ]
+    },
+    "range_distribution": {
+      "00-19": 35,
+      "20-39": 34,
+      "40-59": 23,
+      "60-79": 38,
+      "80-99": 32
+    },
+    "parity_analysis": {
+      "even_count": 88,
+      "odd_count": 74,
+      "even_percentage": 54.3,
+      "odd_percentage": 45.7,
+      "balance": "balanced"
+    },
+    "missing_numbers": {
+      "count": 20,
+      "numbers": [
+        4,
+        8,
+        15,
+        17,
+        18,
+        22,
+        31,
+        42,
+        43,
+        48,
+        51,
+        53,
+        57,
+        62,
+        69,
+        77,
+        78,
+        85,
+        93,
+        95
+      ],
+      "percentage": 20.0
+    },
+    "summary": [
+      "Dígito de unidad más frecuente: 6",
+      "Dígito de decena más frecuente: 6",
+      "Rango más activo: 60-79 (38 apariciones)"
+    ]
+  },
+  "export_date": "2025-09-24T04:20:47.606099"
+}
