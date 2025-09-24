@@ -159,6 +159,100 @@ class DatabaseManager:
                 CREATE INDEX IF NOT EXISTS idx_system_notifications_read ON system_notifications(is_read)
                 """)
                 
+                # ===== NUEVAS TABLAS PARA ANÁLISIS DE PATRONES =====
+                
+                # Tabla de patrones identificados
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS patterns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL, -- 'sequential', 'cyclical', 'correlation'
+                    signature TEXT NOT NULL, -- JSON con detalles del patrón
+                    window_days INTEGER NOT NULL,
+                    params TEXT, -- JSON con parámetros de configuración
+                    status TEXT DEFAULT 'active', -- 'active', 'inactive', 'testing'
+                    strength_score REAL DEFAULT 0.0,
+                    support_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """)
+                
+                # Tabla de puntuaciones por patrón y número
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS pattern_scores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pattern_id INTEGER NOT NULL,
+                    number INTEGER NOT NULL,
+                    score REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    period_start DATE NOT NULL,
+                    period_end DATE NOT NULL,
+                    details TEXT, -- JSON con información adicional
+                    computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (pattern_id) REFERENCES patterns (id),
+                    UNIQUE(pattern_id, number, period_start, period_end)
+                )
+                """)
+                
+                # Tabla de métricas de evaluación de patrones
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS pattern_metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pattern_id INTEGER NOT NULL,
+                    metric_name TEXT NOT NULL,
+                    metric_value REAL NOT NULL,
+                    baseline_value REAL,
+                    uplift REAL,
+                    p_value REAL,
+                    backtest_window_days INTEGER,
+                    computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (pattern_id) REFERENCES patterns (id),
+                    UNIQUE(pattern_id, metric_name, backtest_window_days)
+                )
+                """)
+                
+                # Tabla de ocurrencias de patrones
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS pattern_occurrences (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pattern_id INTEGER NOT NULL,
+                    occurred_at DATE NOT NULL,
+                    context TEXT, -- JSON con contexto de la ocurrencia
+                    strength REAL DEFAULT 1.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (pattern_id) REFERENCES patterns (id)
+                )
+                """)
+                
+                # Índices para optimizar consultas de patrones
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_patterns_type ON patterns(type)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_patterns_window ON patterns(window_days)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_patterns_status ON patterns(status)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_pattern_scores_number ON pattern_scores(number)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_pattern_scores_period ON pattern_scores(period_start, period_end)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_pattern_metrics_pattern ON pattern_metrics(pattern_id)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_pattern_occurrences_date ON pattern_occurrences(occurred_at)
+                """)
+                
                 conn.commit()
                 
         except sqlite3.Error as e:
