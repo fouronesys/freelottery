@@ -181,18 +181,26 @@ class DatabaseManager:
                 )
                 """)
                 
-                # Agregar columna batch_id si no existe (migración)
-                try:
-                    cursor.execute("ALTER TABLE patterns ADD COLUMN batch_id TEXT DEFAULT 'legacy'")
-                except sqlite3.OperationalError:
-                    # La columna ya existe
-                    pass
+                # Verificar si necesita migración (agregar batch_id)
+                cursor.execute("PRAGMA table_info(patterns)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'batch_id' not in columns:
+                    try:
+                        cursor.execute("ALTER TABLE patterns ADD COLUMN batch_id TEXT DEFAULT 'legacy'")
+                        print("✅ Agregada columna batch_id a la tabla patterns")
+                    except sqlite3.Error as e:
+                        print(f"⚠️ Error agregando batch_id: {e}")
                 
                 # Crear restricción UNIQUE como índice separado si no existe
-                cursor.execute("""
-                CREATE UNIQUE INDEX IF NOT EXISTS ux_patterns_type_sig_window
-                ON patterns(type, signature, window_days)
-                """)
+                try:
+                    cursor.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS ux_patterns_type_sig_window
+                    ON patterns(type, signature, window_days)
+                    """)
+                except sqlite3.Error as e:
+                    # El índice podría ya existir, ignorar error
+                    pass
                 
                 # Tabla de puntuaciones por patrón y número
                 cursor.execute("""
