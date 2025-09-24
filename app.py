@@ -415,10 +415,7 @@ def initialize_services():
 def main():
     """Función principal de la aplicación"""
     
-    # Inicializar servicios
-    db, prediction_service, analytics_engine = initialize_services()
-    
-    # Header principal
+    # Header principal - renderizar INMEDIATAMENTE para evitar "Please wait..."
     st.markdown("""
     <div class="main-header">
         <h1>🎲 Quiniela Loteka - Sistema de Análisis Unificado</h1>
@@ -426,13 +423,44 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Navegación principal
+    # Navegación principal - crear tabs inmediatamente
     tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Dashboard Overview", 
         "🎯 Prediction Lab", 
         "🔍 Pattern Analysis",
         "📈 Data & Performance"
     ])
+    
+    # Inicializar servicios de manera diferida usando session state
+    if 'services_initialized' not in st.session_state:
+        with st.spinner("🔄 Inicializando servicios del sistema..."):
+            try:
+                db, prediction_service, analytics_engine = initialize_services()
+                st.session_state.db = db
+                st.session_state.prediction_service = prediction_service
+                st.session_state.analytics_engine = analytics_engine
+                st.session_state.services_initialized = True
+                st.session_state.initialization_error = None
+            except Exception as e:
+                st.session_state.services_initialized = False
+                st.session_state.initialization_error = str(e)
+                st.error(f"❌ Error al inicializar servicios: {e}")
+                st.info("Por favor, recarga la página para intentar nuevamente.")
+                return
+    
+    # Verificar si hay error de inicialización
+    if st.session_state.get('initialization_error'):
+        st.error(f"❌ Error de inicialización: {st.session_state.initialization_error}")
+        if st.button("🔄 Reintentar Inicialización"):
+            del st.session_state['services_initialized']
+            del st.session_state['initialization_error']
+            st.rerun()
+        return
+    
+    # Obtener servicios del session state
+    db = st.session_state.db
+    prediction_service = st.session_state.prediction_service
+    analytics_engine = st.session_state.analytics_engine
     
     with tab1:
         render_dashboard_overview(analytics_engine)

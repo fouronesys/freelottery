@@ -15,7 +15,7 @@ class DatabaseManager:
     def init_database(self):
         """Inicializa la base de datos y crea las tablas necesarias"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite3.connect(self.db_path, timeout=10.0) as conn:
                 # Habilitar foreign keys
                 conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
