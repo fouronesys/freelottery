@@ -405,12 +405,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
-def initialize_services():
-    """Inicializa los servicios del sistema"""
-    db = DatabaseManager()
-    prediction_service = UnifiedPredictionService(db)
-    analytics_engine = UnifiedAnalyticsEngine(db)
-    return db, prediction_service, analytics_engine
+def initialize_database():
+    """Inicializa solo la base de datos"""
+    return DatabaseManager()
+
+@st.cache_resource
+def initialize_prediction_service(_db):
+    """Inicializa el servicio de predicciones de manera diferida"""
+    return UnifiedPredictionService(_db)
+
+@st.cache_resource  
+def initialize_analytics_engine(_db):
+    """Inicializa el motor de análisis de manera diferida"""
+    return UnifiedAnalyticsEngine(_db)
 
 def main():
     """Función principal de la aplicación"""
@@ -431,48 +438,109 @@ def main():
         "📈 Data & Performance"
     ])
     
-    # Inicializar servicios de manera diferida usando session state
-    if 'services_initialized' not in st.session_state:
-        with st.spinner("🔄 Inicializando servicios del sistema..."):
-            try:
-                db, prediction_service, analytics_engine = initialize_services()
-                st.session_state.db = db
-                st.session_state.prediction_service = prediction_service
-                st.session_state.analytics_engine = analytics_engine
-                st.session_state.services_initialized = True
-                st.session_state.initialization_error = None
-            except Exception as e:
-                st.session_state.services_initialized = False
-                st.session_state.initialization_error = str(e)
-                st.error(f"❌ Error al inicializar servicios: {e}")
-                st.info("Por favor, recarga la página para intentar nuevamente.")
-                return
+    # Inicializar solo la base de datos inmediatamente (operación mínima)
+    if 'db_initialized' not in st.session_state:
+        try:
+            st.session_state.db = initialize_database()
+            st.session_state.db_initialized = True
+        except Exception as e:
+            st.error(f"❌ Error al conectar con la base de datos: {e}")
+            st.stop()
     
-    # Verificar si hay error de inicialización
-    if st.session_state.get('initialization_error'):
-        st.error(f"❌ Error de inicialización: {st.session_state.initialization_error}")
-        if st.button("🔄 Reintentar Inicialización"):
-            del st.session_state['services_initialized']
-            del st.session_state['initialization_error']
-            st.rerun()
-        return
-    
-    # Obtener servicios del session state
     db = st.session_state.db
-    prediction_service = st.session_state.prediction_service
-    analytics_engine = st.session_state.analytics_engine
     
     with tab1:
-        render_dashboard_overview(analytics_engine)
+        # Vista inicial ligera - no cargar nada pesado automáticamente
+        st.header("📊 Bienvenido al Sistema de Análisis")
+        
+        st.markdown("""
+        ### 🎲 Sistema Unificado de Quiniela Loteka
+        
+        Este dashboard te permite analizar patrones históricos y generar predicciones inteligentes 
+        para la Quiniela Loteka utilizando análisis estadístico avanzado.
+        
+        #### ¿Qué puedes hacer aquí?
+        - 📈 **Análisis de Datos**: Visualiza tendencias y patrones históricos
+        - 🎯 **Predicciones**: Genera recomendaciones basadas en múltiples estrategias  
+        - 🔍 **Análisis de Patrones**: Descubre correlaciones y secuencias
+        - 📊 **Rendimiento**: Monitorea la efectividad del sistema
+        """)
+        
+        st.divider()
+        
+        # Botón para cargar el resumen completo  
+        if st.button("🚀 Cargar Resumen Completo del Sistema", type="primary", use_container_width=True):
+            # Inicializar analytics engine solo cuando el usuario lo solicite
+            if 'analytics_engine' not in st.session_state:
+                with st.spinner("🔄 Inicializando motor de análisis..."):
+                    try:
+                        st.session_state.analytics_engine = initialize_analytics_engine(db)
+                    except Exception as e:
+                        st.error(f"❌ Error al inicializar análisis: {e}")
+                        st.stop()
+            
+            # Marcar que debe mostrar el dashboard
+            st.session_state.show_dashboard = True
+            st.rerun()
+        
+        # Mostrar dashboard solo si se solicitó
+        if st.session_state.get('show_dashboard', False):
+            if 'analytics_engine' in st.session_state:
+                render_dashboard_overview(st.session_state.analytics_engine)
+            else:
+                st.warning("⚠️ Motor de análisis no inicializado. Haz clic en el botón de arriba.")
     
     with tab2:
-        render_prediction_lab(prediction_service, analytics_engine)
+        # Inicializar servicios solo cuando se necesiten
+        if 'prediction_service' not in st.session_state:
+            with st.spinner("🔄 Inicializando servicio de predicciones..."):
+                try:
+                    st.session_state.prediction_service = initialize_prediction_service(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar predicciones: {e}")
+                    st.stop()
+        
+        if 'analytics_engine' not in st.session_state:
+            with st.spinner("🔄 Inicializando motor de análisis..."):
+                try:
+                    st.session_state.analytics_engine = initialize_analytics_engine(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar análisis: {e}")
+                    st.stop()
+        
+        render_prediction_lab(st.session_state.prediction_service, st.session_state.analytics_engine)
     
     with tab3:
-        render_pattern_analysis(prediction_service, analytics_engine)
+        # Inicializar servicios solo cuando se necesiten
+        if 'prediction_service' not in st.session_state:
+            with st.spinner("🔄 Inicializando servicio de predicciones..."):
+                try:
+                    st.session_state.prediction_service = initialize_prediction_service(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar predicciones: {e}")
+                    st.stop()
+        
+        if 'analytics_engine' not in st.session_state:
+            with st.spinner("🔄 Inicializando motor de análisis..."):
+                try:
+                    st.session_state.analytics_engine = initialize_analytics_engine(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar análisis: {e}")
+                    st.stop()
+        
+        render_pattern_analysis(st.session_state.prediction_service, st.session_state.analytics_engine)
     
     with tab4:
-        render_data_performance(analytics_engine)
+        # Inicializar analytics engine solo cuando se necesite
+        if 'analytics_engine' not in st.session_state:
+            with st.spinner("🔄 Inicializando motor de análisis..."):
+                try:
+                    st.session_state.analytics_engine = initialize_analytics_engine(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar análisis: {e}")
+                    st.stop()
+        
+        render_data_performance(st.session_state.analytics_engine)
 
 def render_dashboard_overview(analytics_engine):
     """Renderiza el dashboard principal con resumen general"""
