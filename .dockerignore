@@ -1,0 +1,55 @@
+# Archivos de Git
+.git
+.gitignore
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Archivos de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de logs
+*.log
+lottery_automation.log
+collection_log.txt
+
+# Archivos de datos temporales y checkpoints
+*.json
+quiniela_loteka.db
+
+# Archivos de configuración local
+.env
+.env.local
+
+# Documentación
+*.md
+render-deployment-instructions.md
+
+# Archivos de Render (no necesarios para CapRover)
+render.yaml
+render-requirements.txt
+
+# Archivos de lock
+uv.lock
+
+# Scripts de utilidad
+start.sh
+fix_date_error.py
+*.py.bak
