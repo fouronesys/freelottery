@@ -173,6 +173,7 @@ st.markdown("""
         border-left: 4px solid var(--secondary-600) !important;
         background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%) !important;
         border-color: var(--secondary-600) !important;
+        color: #065F46 !important;
     }
     
     .confidence-high::before {
@@ -183,6 +184,7 @@ st.markdown("""
         border-left: 4px solid var(--accent-500) !important;
         background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%) !important;
         border-color: var(--accent-500) !important;
+        color: #92400E !important;
     }
     
     .confidence-medium::before {
@@ -193,10 +195,54 @@ st.markdown("""
         border-left: 4px solid var(--danger-500) !important;
         background: linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%) !important;
         border-color: var(--danger-500) !important;
+        color: #991B1B !important;
     }
     
     .confidence-low::before {
         background: linear-gradient(to bottom, var(--danger-500), var(--danger-600)) !important;
+    }
+
+    /* Estilos específicos para modo oscuro */
+    @media (prefers-color-scheme: dark) {
+        .confidence-high {
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%) !important;
+            color: #A7F3D0 !important;
+            border-left-color: #10B981 !important;
+        }
+        
+        .confidence-medium {
+            background: linear-gradient(135deg, #92400E 0%, #B45309 100%) !important;
+            color: #FDE68A !important;
+            border-left-color: #F59E0B !important;
+        }
+        
+        .confidence-low {
+            background: linear-gradient(135deg, #991B1B 0%, #B91C1C 100%) !important;
+            color: #FECACA !important;
+            border-left-color: #EF4444 !important;
+        }
+    }
+
+    /* Detectar modo oscuro de Streamlit específicamente */
+    [data-theme="dark"] .confidence-high,
+    .stApp[data-theme="dark"] .confidence-high {
+        background: linear-gradient(135deg, #064E3B 0%, #065F46 100%) !important;
+        color: #A7F3D0 !important;
+        border-left-color: #10B981 !important;
+    }
+    
+    [data-theme="dark"] .confidence-medium,
+    .stApp[data-theme="dark"] .confidence-medium {
+        background: linear-gradient(135deg, #92400E 0%, #B45309 100%) !important;
+        color: #FDE68A !important;
+        border-left-color: #F59E0B !important;
+    }
+    
+    [data-theme="dark"] .confidence-low,
+    .stApp[data-theme="dark"] .confidence-low {
+        background: linear-gradient(135deg, #991B1B 0%, #B91C1C 100%) !important;
+        color: #FECACA !important;
+        border-left-color: #EF4444 !important;
     }
     
     /* Botones modernos con efectos */
