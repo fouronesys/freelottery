@@ -617,7 +617,75 @@ def render_prediction_lab(prediction_service, analytics_engine):
         strategy_config = strategies[selected_strategy]
         st.info(f"📋 **{strategy_config['name']}**: {strategy_config['description']}")
     
-    # Botón para generar predicciones
+    # ===== NUEVA SECCIÓN: RECOMENDACIONES CIENTÍFICAS ESPECIALES =====
+    st.divider()
+    st.subheader("🧪 Recomendaciones Científicas Especiales")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🎯 Jugada del Día")
+        st.write("Los **3 números** más prometedores para hoy basados en análisis científico avanzado:")
+        
+        if st.button("🎯 Generar Jugada del Día", key="daily_btn"):
+            with st.spinner("🔬 Analizando con machine learning y estadística Bayesiana..."):
+                daily_result = prediction_service.get_daily_recommendation(period_days)
+            
+            if daily_result and 'recommendations' in daily_result:
+                st.success("✅ **JUGADA DEL DÍA GENERADA**")
+                
+                for i, rec in enumerate(daily_result['recommendations'], 1):
+                    confidence_class = (
+                        "confidence-high" if rec['confidence'] >= 0.7 else
+                        "confidence-medium" if rec['confidence'] >= 0.5 else
+                        "confidence-low"
+                    )
+                    
+                    st.markdown(f"""
+                    <div class="metric-card {confidence_class}">
+                        <h4>#{i} - Número {rec['number']:02d}</h4>
+                        <p><strong>Probabilidad:</strong> {rec['probability']:.4f}</p>
+                        <p><strong>Confianza:</strong> {rec['confidence']:.3f}</p>
+                        <p><strong>Análisis:</strong> {rec['reasoning']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Mostrar resumen científico
+                st.info(f"🧬 **Método:** {daily_result.get('analysis_method', 'Ensemble Científico')}")
+            else:
+                st.error("❌ No se pudo generar la jugada del día")
+    
+    with col2:
+        st.markdown("### 📅 Números para la Semana")
+        st.write("Los **3 números** más estables para jugar durante toda la semana:")
+        
+        if st.button("📅 Generar Números Semanales", key="weekly_btn"):
+            with st.spinner("📊 Calculando estabilidad y patrones temporales..."):
+                weekly_result = prediction_service.get_weekly_recommendation(period_days)
+            
+            if weekly_result and 'recommendations' in weekly_result:
+                st.success("✅ **NÚMEROS SEMANALES GENERADOS**")
+                
+                for i, rec in enumerate(weekly_result['recommendations'], 1):
+                    stability_score = rec.get('stability_score', rec.get('probability', 0))
+                    
+                    st.markdown(f"""
+                    <div class="metric-card confidence-medium">
+                        <h4>#{i} - Número {rec['number']:02d}</h4>
+                        <p><strong>Score de Estabilidad:</strong> {stability_score:.4f}</p>
+                        <p><strong>Confianza:</strong> {rec['confidence']:.3f}</p>
+                        <p><strong>Análisis:</strong> {rec['reasoning']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Mostrar resumen científico
+                st.info(f"📈 **Método:** {weekly_result.get('analysis_method', 'Análisis de Estabilidad')}")
+            else:
+                st.error("❌ No se pudieron generar números semanales")
+    
+    st.divider()
+    
+    # Botón para generar predicciones (original)
     if st.button("🚀 Generar Predicciones", type="primary", use_container_width=True):
         
         with st.spinner("Generando predicciones inteligentes..."):

@@ -14,6 +14,7 @@ import math
 from collections import defaultdict, Counter
 from database import DatabaseManager
 from analyzer import StatisticalAnalyzer
+from scientific_predictor_simple import SimplifiedScientificPredictor
 
 class UnifiedPredictionService:
     """Servicio unificado de predicciones con múltiples estrategias"""
@@ -21,6 +22,7 @@ class UnifiedPredictionService:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
         self.analyzer = StatisticalAnalyzer(db_manager)
+        self.scientific_predictor = SimplifiedScientificPredictor(db_manager)
         self.number_range = (0, 99)
         
         # Estrategias de predicción disponibles
@@ -54,6 +56,17 @@ class UnifiedPredictionService:
                     'trends': 0.35,
                     'patterns': 0.10
                 }
+            },
+            'scientific': {
+                'name': 'Científico Avanzado',
+                'description': 'Análisis probabilístico con ML, Bayesiano y ensemble',
+                'weights': {
+                    'bayesian': 0.25,
+                    'ml': 0.25,
+                    'gaps': 0.25,
+                    'trends': 0.15,
+                    'patterns': 0.10
+                }
             }
         }
         
@@ -77,6 +90,10 @@ class UnifiedPredictionService:
         
         if strategy not in self.strategies:
             strategy = 'balanced'
+        
+        # Usar predictor científico si se selecciona esa estrategia
+        if strategy == 'scientific':
+            return self._generate_scientific_predictions(days, num_predictions, confidence_threshold)
         
         strategy_config = self.strategies[strategy]
         weights = strategy_config['weights']
@@ -535,6 +552,183 @@ class UnifiedPredictionService:
     def clear_cache(self):
         """Limpia el cache"""
         self._cache.clear()
+    
+    def _generate_scientific_predictions(
+        self, 
+        days: int, 
+        num_predictions: int, 
+        confidence_threshold: float
+    ) -> Dict[str, Any]:
+        """Genera predicciones usando el sistema científico avanzado"""
+        
+        cache_key = f"scientific_{days}_{num_predictions}_{confidence_threshold}"
+        
+        # Verificar cache
+        if self._is_cache_valid(cache_key):
+            return self._cache[cache_key]['data']
+        
+        print(f"🔬 Generando predicciones científicas...")
+        
+        try:
+            # Calcular frecuencias una sola vez (optimización de rendimiento)
+            frequency_data = self.scientific_predictor.calculate_advanced_frequencies(days)
+            
+            # Entrenar modelo ML
+            ml_model = self.scientific_predictor.train_ml_enhanced_model(frequency_data)
+            
+            # Obtener predicciones científicas
+            scientific_predictions = self.scientific_predictor.generate_ensemble_predictions(
+                frequency_data,
+                ml_model,
+                num_predictions=num_predictions
+            )
+            
+            # Filtrar por umbral de confianza
+            filtered_predictions = [
+                pred for pred in scientific_predictions 
+                if pred.confidence >= confidence_threshold
+            ]
+            
+            # Convertir a formato estándar
+            predictions = []
+            for pred in filtered_predictions:
+                predictions.append({
+                    'number': pred.number,
+                    'score': pred.probability,
+                    'confidence': pred.confidence,
+                    'confidence_level': self._get_confidence_level(pred.confidence),
+                    'reasoning': pred.reasoning,
+                    'rank': pred.rank,
+                    'active_components': list(pred.components.keys())
+                })
+            
+            # Estadísticas (corregir nombre del método)
+            statistics = self._calculate_statistics(predictions)
+            
+            # Análisis de componentes científicos
+            component_contributions = {
+                'bayesian': {
+                    'weight': 0.25,
+                    'numbers_found': len([p for p in filtered_predictions if p.components.get('bayesian', 0) > 0.01]),
+                    'numbers_in_predictions': len([p for p in filtered_predictions if p.components.get('bayesian', 0) > 0.05]),
+                    'effectiveness': 0.8
+                },
+                'machine_learning': {
+                    'weight': 0.25,
+                    'numbers_found': len([p for p in filtered_predictions if p.components.get('ml', 0) > 0.01]),
+                    'numbers_in_predictions': len([p for p in filtered_predictions if p.components.get('ml', 0) > 0.05]),
+                    'effectiveness': 0.75
+                },
+                'gap_analysis': {
+                    'weight': 0.25,
+                    'numbers_found': len([p for p in filtered_predictions if p.components.get('gap', 0) > 0.01]),
+                    'numbers_in_predictions': len([p for p in filtered_predictions if p.components.get('gap', 0) > 0.05]),
+                    'effectiveness': 0.7
+                }
+            }
+            
+            result = {
+                'predictions': predictions,
+                'statistics': statistics,
+                'component_contributions': component_contributions,
+                'strategy': 'scientific',
+                'total_analyzed': 100,
+                'generation_time': datetime.now().isoformat(),
+                'data_period_days': days
+            }
+            
+            # Guardar en cache
+            self._cache[cache_key] = {
+                'data': result,
+                'timestamp': datetime.now()
+            }
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Error en predicciones científicas: {e}")
+            # Fallback a estrategia balanced
+            return self.generate_predictions('balanced', days, num_predictions, confidence_threshold)
+    
+    def get_daily_recommendation(self, days: int = 1825) -> Dict[str, Any]:
+        """Obtiene la recomendación diaria (jugada del día) con análisis científico"""
+        
+        print("🎯 Generando JUGADA DEL DÍA con análisis científico...")
+        
+        try:
+            daily_picks = self.scientific_predictor.get_daily_recommendation(days)
+            
+            recommendations = []
+            for pick in daily_picks:
+                recommendations.append({
+                    'number': pick.number,
+                    'probability': pick.probability,
+                    'confidence': pick.confidence,
+                    'reasoning': pick.reasoning,
+                    'components': pick.components,
+                    'rank': pick.rank
+                })
+            
+            return {
+                'type': 'daily_recommendation',
+                'recommendations': recommendations,
+                'total_numbers': len(recommendations),
+                'analysis_method': 'scientific_ensemble',
+                'generation_time': datetime.now().isoformat(),
+                'data_period_days': days
+            }
+            
+        except Exception as e:
+            print(f"❌ Error en recomendación diaria: {e}")
+            # Fallback
+            fallback = self.generate_predictions('balanced', days, 3, 0.2)
+            return {
+                'type': 'daily_recommendation_fallback',
+                'recommendations': fallback['predictions'][:3],
+                'total_numbers': 3,
+                'analysis_method': 'balanced_fallback',
+                'generation_time': datetime.now().isoformat()
+            }
+    
+    def get_weekly_recommendation(self, days: int = 1825) -> Dict[str, Any]:
+        """Obtiene recomendación semanal (números estables) con análisis científico"""
+        
+        print("📅 Generando NÚMEROS PARA LA SEMANA con análisis científico...")
+        
+        try:
+            weekly_picks = self.scientific_predictor.get_weekly_recommendation(days)
+            
+            recommendations = []
+            for pick in weekly_picks:
+                recommendations.append({
+                    'number': pick.number,
+                    'stability_score': pick.probability,
+                    'confidence': pick.confidence,
+                    'reasoning': pick.reasoning,
+                    'components': pick.components,
+                    'rank': pick.rank
+                })
+            
+            return {
+                'type': 'weekly_recommendation',
+                'recommendations': recommendations,
+                'total_numbers': len(recommendations),
+                'analysis_method': 'scientific_stability',
+                'generation_time': datetime.now().isoformat(),
+                'data_period_days': days
+            }
+            
+        except Exception as e:
+            print(f"❌ Error en recomendación semanal: {e}")
+            # Fallback
+            fallback = self.generate_predictions('conservative', days, 3, 0.3)
+            return {
+                'type': 'weekly_recommendation_fallback',
+                'recommendations': fallback['predictions'][:3],
+                'total_numbers': 3,
+                'analysis_method': 'conservative_fallback',
+                'generation_time': datetime.now().isoformat()
+            }
 
 def main():
     """Función de prueba"""
