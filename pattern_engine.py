@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple, Any, Optional
 from collections import defaultdict, Counter
 import statistics
 import math
+import uuid
 from scipy import stats
 from scipy.fft import fft, fftfreq
 import sqlite3
@@ -55,6 +56,9 @@ class PatternEngine:
         
         print(f"🔍 Analizando patrones en {days} días de datos...")
         
+        # Generar batch ID único para esta ejecución
+        batch_id = str(uuid.uuid4())
+        
         # Obtener datos históricos
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
@@ -63,9 +67,13 @@ class PatternEngine:
             'window_days': days,
             'period_start': start_date.date().isoformat(),
             'period_end': end_date.date().isoformat(),
+            'batch_id': batch_id,
             'patterns': {},
             'summary_stats': {}
         }
+        
+        # Desactivar patrones obsoletos antes de computar nuevos
+        self._deactivate_old_patterns(days)
         
         # Ejecutar cada detector
         for pattern_type, detector in self.detectors.items():
@@ -75,8 +83,8 @@ class PatternEngine:
                 pattern_results = detector.detect_patterns(start_date, end_date)
                 results['patterns'][pattern_type] = pattern_results
                 
-                # Persistir patrones identificados
-                self._persist_patterns(pattern_type, pattern_results, days)
+                # Persistir patrones identificados con batch_id
+                self._persist_patterns(pattern_type, pattern_results, days, batch_id)
                 
             except Exception as e:
                 print(f"  ❌ Error en detector {pattern_type}: {e}")
@@ -84,6 +92,9 @@ class PatternEngine:
         
         # Calcular estadísticas de resumen
         results['summary_stats'] = self._calculate_summary_stats(results['patterns'])
+        
+        # Guardar batch_id para score_numbers
+        results['current_batch_id'] = batch_id
         
         # Guardar en cache
         self._pattern_cache[cache_key] = {
@@ -104,11 +115,12 @@ class PatternEngine:
             Dict {número: {score, confidence, details}}
         """
         
-        # Asegurar que los patrones estén computados
-        self.compute_patterns(days)
+        # Asegurar que los patrones estén computados y obtener batch_id actual
+        pattern_results = self.compute_patterns(days)
+        current_batch_id = pattern_results.get('current_batch_id')
         
-        # Obtener patrones activos
-        active_patterns = self.get_active_patterns(days)
+        # Obtener patrones activos del batch actual únicamente
+        active_patterns = self.get_active_patterns(days, min_score=0.1, batch_id=current_batch_id)
         
         scores = {}
         
@@ -151,13 +163,14 @@ class PatternEngine:
         
         return scores
     
-    def get_active_patterns(self, days: int = 1825, min_score: float = 0.1) -> Dict[int, Dict[str, Any]]:
+    def get_active_patterns(self, days: int = 1825, min_score: float = 0.1, batch_id: Optional[str] = None) -> Dict[int, Dict[str, Any]]:
         """
-        Obtiene patrones activos con puntuación mínima
+        Obtiene patrones activos con puntuación mínima del batch específico
         
         Args:
             days: Ventana de análisis
             min_score: Puntuación mínima para considerar patrón activo
+            batch_id: ID del batch específico (si None, usa el más reciente)
             
         Returns:
             Dict con patrones activos
@@ -167,28 +180,56 @@ class PatternEngine:
             with sqlite3.connect(self.db.db_path) as conn:
                 cursor = conn.cursor()
                 
-                cursor.execute("""
-                SELECT p.id, p.type, p.signature, p.window_days, p.strength_score, 
-                       p.support_count, p.created_at
-                FROM patterns p
-                WHERE p.status = 'active' 
-                  AND p.window_days = ? 
-                  AND p.strength_score >= ?
-                ORDER BY p.strength_score DESC
-                """, (days, min_score))
+                if batch_id:
+                    # Usar batch específico
+                    cursor.execute("""
+                    SELECT p.id, p.type, p.signature, p.window_days, p.strength_score, 
+                           p.support_count, p.batch_id, p.created_at
+                    FROM patterns p
+                    WHERE p.status = 'active' 
+                      AND p.window_days = ? 
+                      AND p.strength_score >= ?
+                      AND p.batch_id = ?
+                    ORDER BY p.strength_score DESC
+                    """, (days, min_score, batch_id))
+                else:
+                    # Usar el batch más reciente para esta ventana
+                    cursor.execute("""
+                    SELECT p.id, p.type, p.signature, p.window_days, p.strength_score, 
+                           p.support_count, p.batch_id, p.created_at
+                    FROM patterns p
+                    WHERE p.status = 'active' 
+                      AND p.window_days = ? 
+                      AND p.strength_score >= ?
+                      AND p.batch_id = (
+                          SELECT batch_id FROM patterns 
+                          WHERE window_days = ? AND status = 'active'
+                          ORDER BY updated_at DESC LIMIT 1
+                      )
+                    ORDER BY p.strength_score DESC
+                    """, (days, min_score, days))
                 
                 active_patterns = {}
+                pattern_signatures = set()  # Para evitar duplicados por firma
                 
                 for row in cursor.fetchall():
                     pattern_id = row[0]
+                    signature_json = row[2]
+                    
+                    # Evitar duplicados por firma
+                    if signature_json in pattern_signatures:
+                        continue
+                    pattern_signatures.add(signature_json)
+                    
                     pattern_data = {
                         'id': pattern_id,
                         'type': row[1],
-                        'signature': json.loads(row[2]) if row[2] else {},
+                        'signature': json.loads(signature_json) if signature_json else {},
                         'window_days': row[3],
                         'strength_score': row[4],
                         'support_count': row[5],
-                        'created_at': row[6]
+                        'batch_id': row[6],
+                        'created_at': row[7]
                     }
                     
                     # Obtener puntuaciones por número para este patrón
@@ -202,7 +243,7 @@ class PatternEngine:
             print(f"❌ Error obteniendo patrones activos: {e}")
             return {}
     
-    def _persist_patterns(self, pattern_type: str, pattern_results: Dict, window_days: int):
+    def _persist_patterns(self, pattern_type: str, pattern_results: Dict, window_days: int, batch_id: str):
         """Persiste patrones identificados en la base de datos"""
         
         if 'patterns' not in pattern_results:
@@ -213,30 +254,64 @@ class PatternEngine:
                 cursor = conn.cursor()
                 
                 for pattern in pattern_results['patterns']:
-                    # Insertar o actualizar patrón
+                    signature_json = json.dumps(pattern.get('signature', {}))
+                    
+                    # Usar INSERT OR REPLACE para evitar duplicados
+                    # Primero verificar si el patrón existe
                     cursor.execute("""
-                    INSERT OR REPLACE INTO patterns 
-                    (type, signature, window_days, params, strength_score, support_count, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    """, (
-                        pattern_type,
-                        json.dumps(pattern.get('signature', {})),
-                        window_days,
-                        json.dumps(pattern.get('params', {})),
-                        pattern.get('strength', 0.0),
-                        pattern.get('support', 0)
-                    ))
+                    SELECT id FROM patterns 
+                    WHERE type = ? AND signature = ? AND window_days = ?
+                    """, (pattern_type, signature_json, window_days))
                     
-                    pattern_id = cursor.lastrowid
+                    existing_pattern = cursor.fetchone()
                     
-                    # Insertar puntuaciones por número
+                    if existing_pattern:
+                        # Actualizar patrón existente
+                        pattern_id = existing_pattern[0]
+                        cursor.execute("""
+                        UPDATE patterns 
+                        SET strength_score = ?, support_count = ?, batch_id = ?, 
+                            status = 'active', updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        """, (
+                            pattern.get('strength', 0.0),
+                            pattern.get('support', 0),
+                            batch_id,
+                            pattern_id
+                        ))
+                    else:
+                        # Insertar nuevo patrón
+                        cursor.execute("""
+                        INSERT INTO patterns 
+                        (type, signature, window_days, params, strength_score, support_count, 
+                         batch_id, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        """, (
+                            pattern_type,
+                            signature_json,
+                            window_days,
+                            json.dumps(pattern.get('params', {})),
+                            pattern.get('strength', 0.0),
+                            pattern.get('support', 0),
+                            batch_id
+                        ))
+                        pattern_id = cursor.lastrowid
+                    
+                    # El pattern_id ya está definido arriba
+                    
+                    # Limpiar puntuaciones anteriores para este patrón
+                    cursor.execute("""
+                    DELETE FROM pattern_scores WHERE pattern_id = ?
+                    """, (pattern_id,))
+                    
+                    # Insertar nuevas puntuaciones por número
                     if 'number_scores' in pattern:
                         period_start = (datetime.now() - timedelta(days=window_days)).date()
                         period_end = datetime.now().date()
                         
                         for number_str, score_data in pattern['number_scores'].items():
                             cursor.execute("""
-                            INSERT OR REPLACE INTO pattern_scores
+                            INSERT INTO pattern_scores
                             (pattern_id, number, score, confidence, period_start, period_end, 
                              details, computed_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -254,6 +329,31 @@ class PatternEngine:
                 
         except sqlite3.Error as e:
             print(f"❌ Error persistiendo patrones {pattern_type}: {e}")
+    
+    def _deactivate_old_patterns(self, window_days: int):
+        """Desactiva patrones obsoletos antes de computar nuevos"""
+        
+        try:
+            with sqlite3.connect(self.db.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Desactivar patrones antiguos (más de 24 horas)
+                cursor.execute("""
+                UPDATE patterns 
+                SET status = 'inactive'
+                WHERE window_days = ? 
+                  AND status = 'active'
+                  AND datetime(updated_at, '+24 hours') < datetime('now')
+                """, (window_days,))
+                
+                deactivated_count = cursor.rowcount
+                if deactivated_count > 0:
+                    print(f"  🧹 Desactivados {deactivated_count} patrones obsoletos")
+                
+                conn.commit()
+                
+        except sqlite3.Error as e:
+            print(f"❌ Error desactivando patrones obsoletos: {e}")
     
     def _get_pattern_number_scores(self, pattern_id: int) -> Dict[str, Dict[str, Any]]:
         """Obtiene puntuaciones por número para un patrón específico"""

@@ -427,9 +427,10 @@ def main():
     """, unsafe_allow_html=True)
     
     # Navegación principal
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Dashboard Overview", 
         "🎯 Prediction Lab", 
+        "🔍 Pattern Analysis",
         "📈 Data & Performance"
     ])
     
@@ -440,6 +441,9 @@ def main():
         render_prediction_lab(prediction_service, analytics_engine)
     
     with tab3:
+        render_pattern_analysis(prediction_service, analytics_engine)
+    
+    with tab4:
         render_data_performance(analytics_engine)
 
 def render_dashboard_overview(analytics_engine):
@@ -1059,6 +1063,250 @@ def render_data_performance(analytics_engine):
                 json.dump(export_data, f, indent=2, ensure_ascii=False, default=str)
             
             st.success(f"✅ Datos exportados a: {filename}")
+
+def render_pattern_analysis(prediction_service, analytics_engine):
+    """Renderiza el análisis avanzado de patrones"""
+    
+    st.header("🔍 Análisis Avanzado de Patrones")
+    
+    # Configuración del análisis
+    st.subheader("⚙️ Configuración del Análisis")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        pattern_days = st.selectbox(
+            "Período de Análisis:",
+            [180, 365, 730, 1825],  # 5 años
+            index=3,  # 5 años por defecto
+            format_func=lambda x: f"{x} días ({x//365:.1f} años)" if x >= 365 else f"{x} días"
+        )
+    
+    with col2:
+        show_pattern_details = st.checkbox(
+            "Mostrar Detalles Técnicos",
+            value=False,
+            help="Muestra información técnica sobre los algoritmos de detección"
+        )
+    
+    with col3:
+        auto_compute = st.checkbox(
+            "Auto-Computar",
+            value=True,
+            help="Computa automáticamente los patrones al cambiar parámetros"
+        )
+    
+    # Botón manual para computar patrones
+    compute_button = st.button("🔬 Analizar Patrones", key="compute_patterns_btn")
+    
+    if auto_compute or compute_button:
+        with st.spinner(f"🔍 Analizando patrones en {pattern_days} días de datos..."):
+            try:
+                # Obtener el motor de patrones del servicio de predicciones
+                pattern_engine = prediction_service.pattern_engine
+                
+                # Computar patrones
+                pattern_results = pattern_engine.compute_patterns(pattern_days)
+                
+                # Obtener puntuaciones de números
+                number_scores = pattern_engine.score_numbers(pattern_days)
+                
+                # Mostrar resultados
+                render_pattern_results(pattern_results, number_scores, show_pattern_details)
+                
+            except Exception as e:
+                st.error(f"❌ Error analizando patrones: {e}")
+                st.info("💡 Asegúrate de que tienes suficientes datos históricos para el análisis.")
+                import traceback
+                with st.expander("Ver detalles del error"):
+                    st.code(traceback.format_exc())
+    else:
+        st.info("👆 Haz clic en 'Analizar Patrones' para comenzar el análisis")
+
+def render_pattern_results(pattern_results, number_scores, show_details):
+    """Renderiza los resultados del análisis de patrones"""
+    
+    st.divider()
+    st.subheader("📊 Resultados del Análisis")
+    
+    # Estadísticas generales
+    if 'summary_stats' in pattern_results:
+        stats = pattern_results['summary_stats']
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "Patrones Detectados",
+                stats.get('total_patterns_detected', 0),
+                delta=f"{len(stats.get('patterns_by_type', {}))} tipos"
+            )
+        
+        with col2:
+            st.metric(
+                "Fuerza Promedio",
+                f"{stats.get('average_strength', 0):.3f}",
+                delta="0-1 escala"
+            )
+        
+        with col3:
+            st.metric(
+                "Soporte Total",
+                stats.get('total_support', 0),
+                delta="ocurrencias"
+            )
+        
+        with col4:
+            numbers_with_patterns = len([n for n, s in number_scores.items() if s['score'] > 0])
+            st.metric(
+                "Números Afectados",
+                numbers_with_patterns,
+                delta=f"{numbers_with_patterns}% cobertura"
+            )
+    
+    # Patrones por tipo
+    if 'patterns' in pattern_results:
+        st.subheader("🎯 Patrones por Tipo")
+        
+        pattern_tabs = st.tabs(["🔄 Secuenciales", "📅 Cíclicos", "🔗 Correlaciones"])
+        
+        # Tab de patrones secuenciales
+        with pattern_tabs[0]:
+            render_sequential_patterns(pattern_results.get('patterns', {}).get('sequential', {}), show_details)
+        
+        # Tab de patrones cíclicos  
+        with pattern_tabs[1]:
+            render_cyclical_patterns(pattern_results.get('patterns', {}).get('cyclical', {}), show_details)
+        
+        # Tab de patrones de correlación
+        with pattern_tabs[2]:
+            render_correlation_patterns(pattern_results.get('patterns', {}).get('correlation', {}), show_details)
+    
+    # Top números con mejores puntuaciones de patrones
+    st.subheader("🏆 Top Números por Puntuación de Patrones")
+    
+    if number_scores:
+        # Ordenar números por puntuación
+        sorted_numbers = sorted(
+            [(num, data) for num, data in number_scores.items() if data['score'] > 0],
+            key=lambda x: x[1]['score'],
+            reverse=True
+        )[:15]  # Top 15
+        
+        if sorted_numbers:
+            for rank, (number, data) in enumerate(sorted_numbers, 1):
+                confidence_class = (
+                    "confidence-high" if data['confidence'] >= 0.7 else
+                    "confidence-medium" if data['confidence'] >= 0.5 else
+                    "confidence-low"
+                )
+                
+                # Generar resumen de patrones
+                pattern_summary = []
+                for pattern_type, details_list in data.get('details', {}).items():
+                    if isinstance(details_list, list) and details_list:
+                        pattern_summary.append(f"{pattern_type}: {len(details_list)} patrones")
+                
+                summary_text = " | ".join(pattern_summary) if pattern_summary else "Patrones básicos"
+                
+                st.markdown(f"""
+                <div class="metric-card {confidence_class}">
+                    <h4>#{rank} - Número {number:02d}</h4>
+                    <p><strong>Puntuación de Patrones:</strong> {data['score']:.2f}</p>
+                    <p><strong>Confianza:</strong> {data['confidence']:.3f}</p>
+                    <p><strong>Patrones:</strong> {summary_text}</p>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No se encontraron números con puntuaciones significativas de patrones.")
+    else:
+        st.info("No hay datos de puntuación de números disponibles.")
+
+def render_sequential_patterns(sequential_data, show_details):
+    """Renderiza información de patrones secuenciales"""
+    
+    if 'patterns' in sequential_data and sequential_data['patterns']:
+        st.write(f"**🔄 {len(sequential_data['patterns'])} patrones secuenciales detectados**")
+        
+        for i, pattern in enumerate(sequential_data['patterns'][:5], 1):  # Mostrar top 5
+            with st.expander(f"Patrón Secuencial #{i} - Fuerza: {pattern.get('strength', 0):.3f}"):
+                signature = pattern.get('signature', {})
+                
+                if signature.get('type') == 'markov_transition':
+                    st.write(f"**Tipo:** Transición de Markov")
+                    st.write(f"**Desde número:** {signature.get('from_number')}")
+                    st.write(f"**Transiciones detectadas:** {signature.get('transition_count')}")
+                
+                if show_details and 'number_scores' in pattern:
+                    st.write("**Números afectados:**")
+                    for num, score_data in list(pattern['number_scores'].items())[:5]:
+                        st.write(f"  • {num}: {score_data.get('reasoning', 'Sin detalles')}")
+    else:
+        st.info("No se detectaron patrones secuenciales significativos.")
+
+def render_cyclical_patterns(cyclical_data, show_details):
+    """Renderiza información de patrones cíclicos"""
+    
+    if 'patterns' in cyclical_data and cyclical_data['patterns']:
+        st.write(f"**📅 {len(cyclical_data['patterns'])} patrones cíclicos detectados**")
+        
+        for i, pattern in enumerate(cyclical_data['patterns'][:5], 1):  # Mostrar top 5
+            with st.expander(f"Patrón Cíclico #{i} - Fuerza: {pattern.get('strength', 0):.3f}"):
+                signature = pattern.get('signature', {})
+                pattern_type = signature.get('type', 'unknown')
+                
+                if pattern_type == 'weekday_bias':
+                    st.write(f"**Tipo:** Sesgo por día de la semana")
+                    st.write(f"**Número:** {signature.get('number')}")
+                    st.write(f"**Días significativos:** {signature.get('significant_days')}")
+                
+                elif pattern_type == 'monthly_seasonal':
+                    st.write(f"**Tipo:** Patrón estacional mensual")
+                    st.write(f"**Número:** {signature.get('number')}")
+                    peak_months = signature.get('peak_months', [])
+                    if peak_months:
+                        month_names = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                                     'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+                        peak_names = [month_names[m-1] for m in peak_months if 1 <= m <= 12]
+                        st.write(f"**Meses pico:** {', '.join(peak_names)}")
+                
+                if show_details and 'number_scores' in pattern:
+                    st.write("**Detalles técnicos:**")
+                    for num, score_data in list(pattern['number_scores'].items())[:3]:
+                        st.write(f"  • {num}: {score_data.get('reasoning', 'Sin detalles')}")
+    else:
+        st.info("No se detectaron patrones cíclicos significativos.")
+
+def render_correlation_patterns(correlation_data, show_details):
+    """Renderiza información de patrones de correlación"""
+    
+    if 'patterns' in correlation_data and correlation_data['patterns']:
+        st.write(f"**🔗 {len(correlation_data['patterns'])} patrones de correlación detectados**")
+        
+        for i, pattern in enumerate(correlation_data['patterns'][:5], 1):  # Mostrar top 5
+            with st.expander(f"Correlación #{i} - Fuerza: {pattern.get('strength', 0):.3f}"):
+                signature = pattern.get('signature', {})
+                
+                if signature.get('type') == 'number_correlation':
+                    numbers = signature.get('numbers', [])
+                    pmi_score = signature.get('pmi_score', 0)
+                    
+                    st.write(f"**Tipo:** Correlación entre números")
+                    st.write(f"**Números correlacionados:** {numbers[0]} ↔ {numbers[1]}")
+                    st.write(f"**PMI Score:** {pmi_score:.3f}")
+                    
+                    if show_details:
+                        params = pattern.get('params', {})
+                        st.write(f"**Chi-cuadrado:** {params.get('chi_square', 0):.2f}")
+                        st.write(f"**P-valor estimado:** {params.get('p_value_estimate', 0):.4f}")
+                
+                if show_details and 'number_scores' in pattern:
+                    st.write("**Números afectados:**")
+                    for num, score_data in pattern['number_scores'].items():
+                        other_num = score_data.get('details', {}).get('correlated_with', 'N/A')
+                        st.write(f"  • {num} (correlacionado con {other_num})")
+    else:
+        st.info("No se detectaron correlaciones significativas entre números.")
 
 if __name__ == "__main__":
     main()

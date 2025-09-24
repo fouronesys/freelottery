@@ -20,6 +20,9 @@ class DatabaseManager:
                 conn.execute("PRAGMA foreign_keys = ON")
                 cursor = conn.cursor()
                 
+                # Ejecutar migraciones de base de datos
+                self._run_migrations(cursor)
+                
                 # Tabla principal de resultados
                 cursor.execute("""
                 CREATE TABLE IF NOT EXISTS draw_results (
@@ -172,9 +175,23 @@ class DatabaseManager:
                     status TEXT DEFAULT 'active', -- 'active', 'inactive', 'testing'
                     strength_score REAL DEFAULT 0.0,
                     support_count INTEGER DEFAULT 0,
+                    batch_id TEXT DEFAULT 'legacy', -- ID único para cada ejecución de análisis
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+                """)
+                
+                # Agregar columna batch_id si no existe (migración)
+                try:
+                    cursor.execute("ALTER TABLE patterns ADD COLUMN batch_id TEXT DEFAULT 'legacy'")
+                except sqlite3.OperationalError:
+                    # La columna ya existe
+                    pass
+                
+                # Crear restricción UNIQUE como índice separado si no existe
+                cursor.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS ux_patterns_type_sig_window
+                ON patterns(type, signature, window_days)
                 """)
                 
                 # Tabla de puntuaciones por patrón y número
@@ -238,6 +255,20 @@ class DatabaseManager:
                 """)
                 
                 cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_patterns_status_window_strength 
+                ON patterns(status, window_days, strength_score DESC)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_patterns_batch ON patterns(batch_id)
+                """)
+                
+                cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_pattern_scores_pattern_number 
+                ON pattern_scores(pattern_id, number)
+                """)
+                
+                cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_pattern_scores_number ON pattern_scores(number)
                 """)
                 
@@ -258,6 +289,11 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"Error inicializando base de datos: {e}")
             raise
+    
+    def _run_migrations(self, cursor):
+        """Ejecuta migraciones de base de datos necesarias"""
+        # Esta función ahora está vacía porque las migraciones se manejan inline
+        pass
     
     def _optimize_database(self):
         """Optimiza la configuración de SQLite para mejor rendimiento"""

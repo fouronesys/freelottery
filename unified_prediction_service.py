@@ -15,6 +15,7 @@ from collections import defaultdict, Counter
 from database import DatabaseManager
 from analyzer import StatisticalAnalyzer
 from scientific_predictor_simple import SimplifiedScientificPredictor
+from pattern_engine import PatternEngine
 
 class UnifiedPredictionService:
     """Servicio unificado de predicciones con múltiples estrategias"""
@@ -23,6 +24,7 @@ class UnifiedPredictionService:
         self.db = db_manager
         self.analyzer = StatisticalAnalyzer(db_manager)
         self.scientific_predictor = SimplifiedScientificPredictor(db_manager)
+        self.pattern_engine = PatternEngine(db_manager)
         self.number_range = (0, 99)
         
         # Estrategias de predicción disponibles
@@ -308,12 +310,39 @@ class UnifiedPredictionService:
         return scores
     
     def _calculate_pattern_component(self, days: int) -> Dict[int, Dict[str, float]]:
-        """Calcula puntuaciones basadas en patrones (dígitos, correlaciones)"""
+        """Calcula puntuaciones basadas en patrones avanzados usando PatternEngine"""
         
-        # Obtener números recientes para correlaciones
-        recent_date = datetime.now() - timedelta(days=30)
-        recent_draws = self.db.get_draws_in_period(recent_date, datetime.now())
-        recent_numbers = set(draw[1] for draw in recent_draws)
+        try:
+            # Usar el PatternEngine para obtener puntuaciones basadas en patrones
+            pattern_scores = self.pattern_engine.score_numbers(days)
+            
+            # Convertir formato del PatternEngine al formato esperado
+            scores = {}
+            
+            for number, pattern_data in pattern_scores.items():
+                if pattern_data['score'] > 0:  # Solo incluir números con puntuaciones positivas
+                    scores[number] = {
+                        'score': pattern_data['score'],
+                        'confidence': pattern_data['confidence'],
+                        'details': {
+                            'pattern_types': list(pattern_data['details'].keys()),
+                            'pattern_contributions': pattern_data['pattern_contributions'],
+                            'advanced_patterns': True,
+                            'total_patterns': len(pattern_data['pattern_contributions'])
+                        }
+                    }
+            
+            print(f"  🎯 PatternEngine encontró patrones para {len(scores)} números")
+            return scores
+            
+        except Exception as e:
+            print(f"  ⚠️ Error en PatternEngine, usando análisis básico: {e}")
+            
+            # Fallback al análisis básico de dígitos si hay error
+            return self._calculate_basic_digit_patterns(days)
+    
+    def _calculate_basic_digit_patterns(self, days: int) -> Dict[int, Dict[str, float]]:
+        """Análisis básico de patrones de dígitos como fallback"""
         
         # Obtener todos los números para análisis de dígitos
         all_draws = self.db.get_draws_in_period(
@@ -323,7 +352,7 @@ class UnifiedPredictionService:
         
         scores = {}
         
-        # Análisis de dígitos favorables
+        # Análisis de dígitos favorables (versión simplificada)
         if all_numbers:
             units_digits = [num % 10 for num in all_numbers]
             tens_digits = [num // 10 for num in all_numbers]
@@ -358,7 +387,8 @@ class UnifiedPredictionService:
                         'details': {
                             'favorable_unit': unit_digit in top_units,
                             'favorable_ten': ten_digit in top_tens,
-                            'digit_pattern_strength': pattern_score / 40
+                            'digit_pattern_strength': pattern_score / 40,
+                            'fallback_mode': True
                         }
                     }
         
