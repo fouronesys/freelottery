@@ -1,46 +1,67 @@
 {
-  "last_processed_date": "2010-09-04",
-  "total_processed": 7,
-  "total_saved": 21,
+  "last_processed_date": "2018-04-15",
+  "total_processed": 343,
+  "total_saved": 1029,
   "session_results": {
-    "session_start": "2025-09-23T19:46:38.384721",
-    "original_start_date": "2010-08-01",
-    "session_end_date": "2010-11-08",
-    "total_days_processed": 35,
-    "total_records_saved": 102,
-    "total_dates_with_data": 34,
+    "session_start": "2025-09-24T01:28:41.483456",
+    "original_start_date": "2018-02-19",
+    "session_end_date": "2018-05-29",
+    "total_days_processed": 56,
+    "total_records_saved": 165,
+    "total_dates_with_data": 55,
     "batch_results": [
       {
-        "start_date": "2010-08-01",
-        "end_date": "2010-08-07",
+        "start_date": "2018-02-19",
+        "end_date": "2018-02-25",
         "days_processed": 7,
         "records_saved": 18,
         "dates_with_data": 6
       },
       {
-        "start_date": "2010-08-08",
-        "end_date": "2010-08-14",
+        "start_date": "2018-02-26",
+        "end_date": "2018-03-04",
         "days_processed": 7,
         "records_saved": 21,
         "dates_with_data": 7
       },
       {
-        "start_date": "2010-08-15",
-        "end_date": "2010-08-21",
+        "start_date": "2018-03-05",
+        "end_date": "2018-03-11",
         "days_processed": 7,
         "records_saved": 21,
         "dates_with_data": 7
       },
       {
-        "start_date": "2010-08-22",
-        "end_date": "2010-08-28",
+        "start_date": "2018-03-12",
+        "end_date": "2018-03-18",
         "days_processed": 7,
         "records_saved": 21,
         "dates_with_data": 7
       },
       {
-        "start_date": "2010-08-29",
-        "end_date": "2010-09-04",
+        "start_date": "2018-03-19",
+        "end_date": "2018-03-25",
+        "days_processed": 7,
+        "records_saved": 21,
+        "dates_with_data": 7
+      },
+      {
+        "start_date": "2018-03-26",
+        "end_date": "2018-04-01",
+        "days_processed": 7,
+        "records_saved": 21,
+        "dates_with_data": 7
+      },
+      {
+        "start_date": "2018-04-02",
+        "end_date": "2018-04-08",
+        "days_processed": 7,
+        "records_saved": 21,
+        "dates_with_data": 7
+      },
+      {
+        "start_date": "2018-04-09",
+        "end_date": "2018-04-15",
         "days_processed": 7,
         "records_saved": 21,
         "dates_with_data": 7
