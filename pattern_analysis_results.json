@@ -1,0 +1,2621 @@
+{
+  "analysis_period": 1825,
+  "analysis_date": "2025-09-24T02:21:51.014261",
+  "patterns": {
+    "sequences": {
+      "total_sequences": 160,
+      "repetition_patterns": {
+        "consecutive_repeat_rate": 0.09433962264150944
+      },
+      "periodicity": {
+        "cycle_7": 0.010570824524312896,
+        "cycle_14": 0.006437768240343348,
+        "cycle_21": 0.008714596949891068,
+        "cycle_30": 0.008888888888888889
+      },
+      "sequence_sample": [
+        [
+          33,
+          51,
+          76
+        ],
+        [
+          64,
+          65,
+          90
+        ],
+        [
+          29,
+          54,
+          94
+        ],
+        [
+          41,
+          83,
+          90
+        ],
+        [
+          15,
+          79,
+          84
+        ]
+      ]
+    },
+    "correlations": {
+      "significant_correlations_count": 25,
+      "strong_correlations": {
+        "20-30": {
+          "correlation": 0.39354838709677425,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "35-37": {
+          "correlation": 0.39354838709677425,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "42-53": {
+          "correlation": 0.33333333333333337,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "9-26": {
+          "correlation": 0.32696390658174096,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "26-85": {
+          "correlation": 0.32696390658174096,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "27-52": {
+          "correlation": 0.32696390658174096,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "30-73": {
+          "correlation": 0.32696390658174096,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "53-78": {
+          "correlation": 0.32696390658174096,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "5-82": {
+          "correlation": 0.3138528138528139,
+          "significance": 0.1,
+          "strength": "alta"
+        },
+        "60-92": {
+          "correlation": 0.3073593073593074,
+          "significance": 0.1,
+          "strength": "alta"
+        }
+      },
+      "top_pairs": [
+        [
+          "(20,30)",
+          0.39354838709677425,
+          0.1
+        ],
+        [
+          "(35,37)",
+          0.39354838709677425,
+          0.1
+        ],
+        [
+          "(42,53)",
+          0.33333333333333337,
+          0.1
+        ],
+        [
+          "(9,26)",
+          0.32696390658174096,
+          0.1
+        ],
+        [
+          "(26,85)",
+          0.32696390658174096,
+          0.1
+        ],
+        [
+          "(27,52)",
+          0.32696390658174096,
+          0.1
+        ],
+        [
+          "(30,73)",
+          0.32696390658174096,
+          0.1
+        ],
+        [
+          "(53,78)",
+          0.32696390658174096,
+          0.1
+        ],
+        [
+          "(5,82)",
+          0.3138528138528139,
+          0.1
+        ],
+        [
+          "(60,92)",
+          0.3073593073593074,
+          0.1
+        ]
+      ],
+      "correlation_strength_distribution": {
+        "alta": 25,
+        "media": 0,
+        "baja": 0
+      }
+    },
+    "temporal": {
+      "temporal_trends": [
+        {
+          "Fecha": "2020-09-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2020-10-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-10-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2020-10-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-10-23",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-10-30",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2020-11-06",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-11-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2020-11-20",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-11-27",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2020-12-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-12-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2020-12-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2020-12-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-01-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-01-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-01-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-01-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-01-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-02-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-02-12",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-02-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-02-26",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-03-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-03-12",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-03-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-03-26",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-04-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-04-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-04-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-04-23",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-04-30",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-05-07",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-05-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-05-21",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-05-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-06-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-06-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-06-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-06-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-07-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-07-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-07-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-07-23",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-07-30",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-08-06",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-08-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-08-20",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-08-27",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-09-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-09-10",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-09-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-09-24",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-10-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-10-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-10-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-10-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-10-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2021-11-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-11-12",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-11-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-11-26",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-12-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-12-10",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-12-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-12-24",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2021-12-31",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-01-07",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-01-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-01-21",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-01-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-02-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-02-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-02-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-02-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-03-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-03-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-03-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-03-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-04-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-04-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-04-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-04-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-04-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-05-06",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-05-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-05-20",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-05-27",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-06-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-06-10",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-06-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-06-24",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-07-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-07-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-07-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-07-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-07-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-08-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-08-12",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-08-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-08-26",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-09-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-09-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-09-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-09-23",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-09-30",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-10-07",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-10-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2022-10-21",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-10-28",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-11-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-11-11",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-11-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-11-25",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-12-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-12-09",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-12-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-12-23",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2022-12-30",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-01-06",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-01-13",
+          "Frecuencia_Promedio": 1.5
+        },
+        {
+          "Fecha": "2023-01-20",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-01-27",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-02-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-02-10",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-02-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-02-24",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-03-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-03-10",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-03-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-03-24",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-03-31",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-04-07",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-04-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-04-21",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-04-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-05-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-05-12",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-05-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-05-26",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-06-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-06-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-06-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-06-23",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-06-30",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-07-07",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-07-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-07-21",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-07-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-08-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-08-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-08-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-08-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-09-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-09-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-09-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-09-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-09-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-10-06",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-10-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-10-20",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-10-27",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-11-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-11-10",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-11-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-11-24",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-12-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-12-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-12-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2023-12-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2023-12-29",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-01-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-01-12",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-01-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-01-26",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-02-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-02-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-02-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-02-23",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-03-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-03-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-03-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-03-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-03-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-04-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-04-12",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-04-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-04-26",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-05-03",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-05-10",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-05-17",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-05-24",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-05-31",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-06-07",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-06-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-06-21",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-06-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-07-05",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-07-12",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-07-19",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-07-26",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-08-02",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-08-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-08-16",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-08-23",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-08-30",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-09-06",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-09-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-09-20",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-09-27",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-10-04",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-10-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-10-18",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-10-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-11-01",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-11-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-11-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-11-22",
+          "Frecuencia_Promedio": 0
+        },
+        {
+          "Fecha": "2024-11-29",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-12-06",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-12-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-12-20",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2024-12-27",
+          "Frecuencia_Promedio": 2
+        },
+        {
+          "Fecha": "2025-01-03",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-01-10",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-01-17",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-01-24",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-01-31",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-02-07",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-02-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-02-21",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-02-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-03-07",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-03-14",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-03-21",
+          "Frecuencia_Promedio": 1.125
+        },
+        {
+          "Fecha": "2025-03-28",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-04-04",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-04-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-04-18",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-04-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-05-02",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-05-09",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-05-16",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-05-23",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-05-30",
+          "Frecuencia_Promedio": 1.125
+        },
+        {
+          "Fecha": "2025-06-06",
+          "Frecuencia_Promedio": 1.0909090909090908
+        },
+        {
+          "Fecha": "2025-06-13",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-06-20",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-06-27",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-07-04",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-07-11",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-07-18",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-07-25",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-08-01",
+          "Frecuencia_Promedio": 1.2
+        },
+        {
+          "Fecha": "2025-08-08",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-08-15",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-08-22",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-08-29",
+          "Frecuencia_Promedio": 1.2
+        },
+        {
+          "Fecha": "2025-09-05",
+          "Frecuencia_Promedio": 1
+        },
+        {
+          "Fecha": "2025-09-12",
+          "Frecuencia_Promedio": 1.125
+        },
+        {
+          "Fecha": "2025-09-19",
+          "Frecuencia_Promedio": 1
+        }
+      ],
+      "weekday_patterns": {
+        "Martes": {
+          "most_common": [
+            [
+              92,
+              3
+            ],
+            [
+              7,
+              3
+            ],
+            [
+              38,
+              3
+            ]
+          ],
+          "average": 50.36666666666667,
+          "sample_size": 60
+        },
+        "Lunes": {
+          "most_common": [
+            [
+              0,
+              3
+            ],
+            [
+              12,
+              2
+            ],
+            [
+              29,
+              2
+            ]
+          ],
+          "average": 48.80555555555556,
+          "sample_size": 72
+        },
+        "Domingo": {
+          "most_common": [
+            [
+              66,
+              4
+            ],
+            [
+              7,
+              4
+            ],
+            [
+              44,
+              4
+            ]
+          ],
+          "average": 48.958333333333336,
+          "sample_size": 72
+        },
+        "Sábado": {
+          "most_common": [
+            [
+              68,
+              3
+            ],
+            [
+              86,
+              3
+            ],
+            [
+              15,
+              3
+            ]
+          ],
+          "average": 51.41975308641975,
+          "sample_size": 81
+        },
+        "Viernes": {
+          "most_common": [
+            [
+              68,
+              3
+            ],
+            [
+              32,
+              3
+            ],
+            [
+              7,
+              3
+            ]
+          ],
+          "average": 51.196969696969695,
+          "sample_size": 66
+        },
+        "Jueves": {
+          "most_common": [
+            [
+              12,
+              3
+            ],
+            [
+              24,
+              3
+            ],
+            [
+              54,
+              2
+            ]
+          ],
+          "average": 44.89855072463768,
+          "sample_size": 69
+        },
+        "Miércoles": {
+          "most_common": [
+            [
+              66,
+              4
+            ],
+            [
+              81,
+              4
+            ],
+            [
+              61,
+              2
+            ]
+          ],
+          "average": 57.03333333333333,
+          "sample_size": 60
+        }
+      },
+      "seasonal_patterns": {
+        "Sep": {
+          "most_common": [
+            [
+              12,
+              4
+            ],
+            [
+              60,
+              3
+            ],
+            [
+              14,
+              3
+            ]
+          ],
+          "average": 50.17460317460318,
+          "sample_size": 63
+        },
+        "Ago": {
+          "most_common": [
+            [
+              58,
+              4
+            ],
+            [
+              68,
+              3
+            ],
+            [
+              79,
+              3
+            ]
+          ],
+          "average": 53.7536231884058,
+          "sample_size": 69
+        },
+        "Jul": {
+          "most_common": [
+            [
+              55,
+              2
+            ],
+            [
+              25,
+              2
+            ],
+            [
+              56,
+              2
+            ]
+          ],
+          "average": 40.61904761904762,
+          "sample_size": 42
+        },
+        "Jun": {
+          "most_common": [
+            [
+              7,
+              4
+            ],
+            [
+              86,
+              3
+            ],
+            [
+              66,
+              3
+            ]
+          ],
+          "average": 49.490196078431374,
+          "sample_size": 51
+        },
+        "May": {
+          "most_common": [
+            [
+              44,
+              4
+            ],
+            [
+              80,
+              2
+            ],
+            [
+              68,
+              2
+            ]
+          ],
+          "average": 38.878787878787875,
+          "sample_size": 33
+        },
+        "Abr": {
+          "most_common": [
+            [
+              99,
+              2
+            ],
+            [
+              21,
+              2
+            ],
+            [
+              54,
+              2
+            ]
+          ],
+          "average": 53.205128205128204,
+          "sample_size": 39
+        },
+        "Mar": {
+          "most_common": [
+            [
+              28,
+              2
+            ],
+            [
+              16,
+              2
+            ],
+            [
+              7,
+              2
+            ]
+          ],
+          "average": 47.044444444444444,
+          "sample_size": 45
+        },
+        "Feb": {
+          "most_common": [
+            [
+              82,
+              2
+            ],
+            [
+              93,
+              2
+            ],
+            [
+              65,
+              2
+            ]
+          ],
+          "average": 57.90909090909091,
+          "sample_size": 33
+        },
+        "Ene": {
+          "most_common": [
+            [
+              66,
+              3
+            ],
+            [
+              81,
+              2
+            ],
+            [
+              75,
+              2
+            ]
+          ],
+          "average": 60.138888888888886,
+          "sample_size": 36
+        },
+        "Dic": {
+          "most_common": [
+            [
+              76,
+              2
+            ],
+            [
+              8,
+              2
+            ],
+            [
+              43,
+              2
+            ]
+          ],
+          "average": 49.333333333333336,
+          "sample_size": 27
+        },
+        "Nov": {
+          "most_common": [
+            [
+              15,
+              2
+            ],
+            [
+              90,
+              2
+            ],
+            [
+              49,
+              1
+            ]
+          ],
+          "average": 56.6,
+          "sample_size": 15
+        },
+        "Oct": {
+          "most_common": [
+            [
+              94,
+              2
+            ],
+            [
+              76,
+              2
+            ],
+            [
+              29,
+              2
+            ]
+          ],
+          "average": 47.888888888888886,
+          "sample_size": 27
+        }
+      },
+      "analysis_range": {
+        "start_date": "2020-09-25",
+        "end_date": "2025-09-24",
+        "days_analyzed": 1825
+      }
+    },
+    "gaps": {
+      "total_numbers_analyzed": 86,
+      "gap_statistics": {
+        "60": {
+          "appearances": 6,
+          "average_gap": 217.8,
+          "min_gap": 7,
+          "max_gap": 793,
+          "median_gap": 62,
+          "gap_std": 326.6629761696296,
+          "last_appearance": "2025-09-23",
+          "days_since_last": 1
+        },
+        "92": {
+          "appearances": 6,
+          "average_gap": 348.6,
+          "min_gap": 69,
+          "max_gap": 654,
+          "median_gap": 306,
+          "gap_std": 242.20404620897645,
+          "last_appearance": "2025-09-23",
+          "days_since_last": 1
+        },
+        "37": {
+          "appearances": 5,
+          "average_gap": 394,
+          "min_gap": 49,
+          "max_gap": 775,
+          "median_gap": 376.0,
+          "gap_std": 398.9093464268125,
+          "last_appearance": "2025-09-23",
+          "days_since_last": 1
+        },
+        "32": {
+          "appearances": 5,
+          "average_gap": 272,
+          "min_gap": 60,
+          "max_gap": 532,
+          "median_gap": 248.0,
+          "gap_std": 239.56766615440128,
+          "last_appearance": "2025-09-22",
+          "days_since_last": 2
+        },
+        "12": {
+          "appearances": 8,
+          "average_gap": 218.57142857142858,
+          "min_gap": 7,
+          "max_gap": 715,
+          "median_gap": 77,
+          "gap_std": 259.2751801611929,
+          "last_appearance": "2025-09-22",
+          "days_since_last": 2
+        },
+        "29": {
+          "appearances": 5,
+          "average_gap": 446.75,
+          "min_gap": 288,
+          "max_gap": 647,
+          "median_gap": 426.0,
+          "gap_std": 156.6362559137145,
+          "last_appearance": "2025-09-22",
+          "days_since_last": 2
+        },
+        "13": {
+          "appearances": 4,
+          "average_gap": 276.3333333333333,
+          "min_gap": 61,
+          "max_gap": 691,
+          "median_gap": 77,
+          "gap_std": 359.2009651063501,
+          "last_appearance": "2025-09-21",
+          "days_since_last": 3
+        },
+        "14": {
+          "appearances": 5,
+          "average_gap": 176.75,
+          "min_gap": 6,
+          "max_gap": 617,
+          "median_gap": 42.0,
+          "gap_std": 295.222373813368,
+          "last_appearance": "2025-09-21",
+          "days_since_last": 3
+        },
+        "20": {
+          "appearances": 5,
+          "average_gap": 310,
+          "min_gap": 31,
+          "max_gap": 807,
+          "median_gap": 201.0,
+          "gap_std": 354.2409725972797,
+          "last_appearance": "2025-09-21",
+          "days_since_last": 3
+        },
+        "34": {
+          "appearances": 4,
+          "average_gap": 509.3333333333333,
+          "min_gap": 31,
+          "max_gap": 928,
+          "median_gap": 569,
+          "gap_std": 451.46686847800174,
+          "last_appearance": "2025-09-20",
+          "days_since_last": 4
+        },
+        "89": {
+          "appearances": 6,
+          "average_gap": 268.8,
+          "min_gap": 44,
+          "max_gap": 884,
+          "median_gap": 100,
+          "gap_std": 352.43609349781417,
+          "last_appearance": "2025-09-20",
+          "days_since_last": 4
+        },
+        "96": {
+          "appearances": 4,
+          "average_gap": 519.3333333333334,
+          "min_gap": 42,
+          "max_gap": 1243,
+          "median_gap": 273,
+          "gap_std": 637.2678662331354,
+          "last_appearance": "2025-09-20",
+          "days_since_last": 4
+        },
+        "38": {
+          "appearances": 10,
+          "average_gap": 191.44444444444446,
+          "min_gap": 0,
+          "max_gap": 787,
+          "median_gap": 90,
+          "gap_std": 249.54814721367453,
+          "last_appearance": "2025-09-19",
+          "days_since_last": 5
+        },
+        "33": {
+          "appearances": 3,
+          "average_gap": 907.5,
+          "min_gap": 107,
+          "max_gap": 1708,
+          "median_gap": 907.5,
+          "gap_std": 1132.0779566796625,
+          "last_appearance": "2025-09-19",
+          "days_since_last": 5
+        },
+        "76": {
+          "appearances": 9,
+          "average_gap": 226.875,
+          "min_gap": 1,
+          "max_gap": 808,
+          "median_gap": 156.5,
+          "gap_std": 271.0115640653418,
+          "last_appearance": "2025-09-19",
+          "days_since_last": 5
+        },
+        "97": {
+          "appearances": 4,
+          "average_gap": 122.66666666666667,
+          "min_gap": 30,
+          "max_gap": 277,
+          "median_gap": 61,
+          "gap_std": 134.5523442134448,
+          "last_appearance": "2025-09-18",
+          "days_since_last": 6
+        },
+        "54": {
+          "appearances": 7,
+          "average_gap": 297.1666666666667,
+          "min_gap": 38,
+          "max_gap": 457,
+          "median_gap": 348.5,
+          "gap_std": 172.53801513482955,
+          "last_appearance": "2025-09-18",
+          "days_since_last": 6
+        },
+        "61": {
+          "appearances": 6,
+          "average_gap": 137.4,
+          "min_gap": 0,
+          "max_gap": 433,
+          "median_gap": 102,
+          "gap_std": 171.00672501395962,
+          "last_appearance": "2025-09-17",
+          "days_since_last": 7
+        },
+        "90": {
+          "appearances": 5,
+          "average_gap": 449.5,
+          "min_gap": 31,
+          "max_gap": 957,
+          "median_gap": 405.0,
+          "gap_std": 389.98333297719273,
+          "last_appearance": "2025-09-17",
+          "days_since_last": 7
+        },
+        "7": {
+          "appearances": 13,
+          "average_gap": 135.83333333333334,
+          "min_gap": 7,
+          "max_gap": 319,
+          "median_gap": 65.0,
+          "gap_std": 128.95794475390616,
+          "last_appearance": "2025-09-16",
+          "days_since_last": 8
+        },
+        "67": {
+          "appearances": 5,
+          "average_gap": 388.5,
+          "min_gap": 28,
+          "max_gap": 1327,
+          "median_gap": 99.5,
+          "gap_std": 627.7231342983413,
+          "last_appearance": "2025-09-16",
+          "days_since_last": 8
+        },
+        "64": {
+          "appearances": 4,
+          "average_gap": 598.6666666666666,
+          "min_gap": 274,
+          "max_gap": 1187,
+          "median_gap": 335,
+          "gap_std": 510.42368022392276,
+          "last_appearance": "2025-09-15",
+          "days_since_last": 9
+        },
+        "36": {
+          "appearances": 7,
+          "average_gap": 280.8333333333333,
+          "min_gap": 47,
+          "max_gap": 472,
+          "median_gap": 304.0,
+          "gap_std": 154.24190956632594,
+          "last_appearance": "2025-09-12",
+          "days_since_last": 12
+        },
+        "70": {
+          "appearances": 7,
+          "average_gap": 245.5,
+          "min_gap": 8,
+          "max_gap": 1211,
+          "median_gap": 44.0,
+          "gap_std": 475.3759564807627,
+          "last_appearance": "2025-09-12",
+          "days_since_last": 12
+        },
+        "79": {
+          "appearances": 6,
+          "average_gap": 349.4,
+          "min_gap": 27,
+          "max_gap": 898,
+          "median_gap": 274,
+          "gap_std": 329.20783708775826,
+          "last_appearance": "2025-09-12",
+          "days_since_last": 12
+        },
+        "50": {
+          "appearances": 3,
+          "average_gap": 247,
+          "min_gap": 229,
+          "max_gap": 265,
+          "median_gap": 247.0,
+          "gap_std": 25.45584412271571,
+          "last_appearance": "2025-09-06",
+          "days_since_last": 18
+        },
+        "21": {
+          "appearances": 4,
+          "average_gap": 286.6666666666667,
+          "min_gap": 59,
+          "max_gap": 650,
+          "median_gap": 151,
+          "gap_std": 318.0005241085828,
+          "last_appearance": "2025-09-06",
+          "days_since_last": 18
+        },
+        "11": {
+          "appearances": 6,
+          "average_gap": 250,
+          "min_gap": 15,
+          "max_gap": 610,
+          "median_gap": 68,
+          "gap_std": 282.6119247307162,
+          "last_appearance": "2025-09-01",
+          "days_since_last": 23
+        },
+        "75": {
+          "appearances": 7,
+          "average_gap": 215.66666666666666,
+          "min_gap": 15,
+          "max_gap": 877,
+          "median_gap": 102.5,
+          "gap_std": 333.1135942387621,
+          "last_appearance": "2025-09-01",
+          "days_since_last": 23
+        },
+        "49": {
+          "appearances": 9,
+          "average_gap": 207.375,
+          "min_gap": 1,
+          "max_gap": 668,
+          "median_gap": 123.0,
+          "gap_std": 222.9157031576863,
+          "last_appearance": "2025-09-01",
+          "days_since_last": 23
+        },
+        "83": {
+          "appearances": 7,
+          "average_gap": 291.6666666666667,
+          "min_gap": 27,
+          "max_gap": 850,
+          "median_gap": 115.5,
+          "gap_std": 351.2991128179328,
+          "last_appearance": "2025-08-31",
+          "days_since_last": 24
+        },
+        "27": {
+          "appearances": 3,
+          "average_gap": 65,
+          "min_gap": 8,
+          "max_gap": 122,
+          "median_gap": 65.0,
+          "gap_std": 80.61017305526642,
+          "last_appearance": "2025-08-31",
+          "days_since_last": 24
+        },
+        "19": {
+          "appearances": 8,
+          "average_gap": 212.28571428571428,
+          "min_gap": 1,
+          "max_gap": 610,
+          "median_gap": 160,
+          "gap_std": 219.91112923611837,
+          "last_appearance": "2025-08-25",
+          "days_since_last": 30
+        },
+        "68": {
+          "appearances": 10,
+          "average_gap": 185.22222222222223,
+          "min_gap": 9,
+          "max_gap": 762,
+          "median_gap": 79,
+          "gap_std": 257.2356787936783,
+          "last_appearance": "2025-08-25",
+          "days_since_last": 30
+        },
+        "66": {
+          "appearances": 11,
+          "average_gap": 116.6,
+          "min_gap": 0,
+          "max_gap": 716,
+          "median_gap": 28.5,
+          "gap_std": 219.73529529868432,
+          "last_appearance": "2025-08-24",
+          "days_since_last": 31
+        },
+        "98": {
+          "appearances": 6,
+          "average_gap": 242.4,
+          "min_gap": 16,
+          "max_gap": 450,
+          "median_gap": 274,
+          "gap_std": 197.91740701615913,
+          "last_appearance": "2025-08-24",
+          "days_since_last": 31
+        },
+        "63": {
+          "appearances": 5,
+          "average_gap": 120.25,
+          "min_gap": 46,
+          "max_gap": 153,
+          "median_gap": 141.0,
+          "gap_std": 50.77647092896473,
+          "last_appearance": "2025-08-24",
+          "days_since_last": 31
+        },
+        "88": {
+          "appearances": 4,
+          "average_gap": 167.66666666666666,
+          "min_gap": 11,
+          "max_gap": 283,
+          "median_gap": 209,
+          "gap_std": 140.63190723777208,
+          "last_appearance": "2025-08-16",
+          "days_since_last": 39
+        },
+        "3": {
+          "appearances": 5,
+          "average_gap": 402.5,
+          "min_gap": 67,
+          "max_gap": 1357,
+          "median_gap": 93.0,
+          "gap_std": 636.7529609929845,
+          "last_appearance": "2025-08-11",
+          "days_since_last": 44
+        },
+        "58": {
+          "appearances": 6,
+          "average_gap": 68.8,
+          "min_gap": 3,
+          "max_gap": 189,
+          "median_gap": 8,
+          "gap_std": 88.3272324937219,
+          "last_appearance": "2025-08-10",
+          "days_since_last": 45
+        },
+        "74": {
+          "appearances": 4,
+          "average_gap": 475,
+          "min_gap": 43,
+          "max_gap": 1323,
+          "median_gap": 59,
+          "gap_std": 734.433114721824,
+          "last_appearance": "2025-08-10",
+          "days_since_last": 45
+        },
+        "0": {
+          "appearances": 6,
+          "average_gap": 306.2,
+          "min_gap": 2,
+          "max_gap": 1065,
+          "median_gap": 77,
+          "gap_std": 439.84735988749554,
+          "last_appearance": "2025-08-09",
+          "days_since_last": 46
+        },
+        "6": {
+          "appearances": 5,
+          "average_gap": 424.5,
+          "min_gap": 45,
+          "max_gap": 792,
+          "median_gap": 430.5,
+          "gap_std": 359.71887171326813,
+          "last_appearance": "2025-08-09",
+          "days_since_last": 46
+        },
+        "41": {
+          "appearances": 8,
+          "average_gap": 246.71428571428572,
+          "min_gap": 123,
+          "max_gap": 701,
+          "median_gap": 181,
+          "gap_std": 204.1475890017761,
+          "last_appearance": "2025-08-08",
+          "days_since_last": 47
+        },
+        "16": {
+          "appearances": 4,
+          "average_gap": 53,
+          "min_gap": 12,
+          "max_gap": 120,
+          "median_gap": 27,
+          "gap_std": 58.5064099052403,
+          "last_appearance": "2025-08-07",
+          "days_since_last": 48
+        },
+        "39": {
+          "appearances": 3,
+          "average_gap": 703.5,
+          "min_gap": 577,
+          "max_gap": 830,
+          "median_gap": 703.5,
+          "gap_std": 178.89801564019652,
+          "last_appearance": "2025-08-07",
+          "days_since_last": 48
+        },
+        "99": {
+          "appearances": 8,
+          "average_gap": 235.42857142857142,
+          "min_gap": 2,
+          "max_gap": 1050,
+          "median_gap": 40,
+          "gap_std": 390.75561720972405,
+          "last_appearance": "2025-08-06",
+          "days_since_last": 49
+        },
+        "1": {
+          "appearances": 5,
+          "average_gap": 218.5,
+          "min_gap": 5,
+          "max_gap": 724,
+          "median_gap": 72.5,
+          "gap_std": 338.87313260274857,
+          "last_appearance": "2025-08-05",
+          "days_since_last": 50
+        },
+        "94": {
+          "appearances": 6,
+          "average_gap": 347.4,
+          "min_gap": 2,
+          "max_gap": 1310,
+          "median_gap": 135,
+          "gap_std": 542.7598916648134,
+          "last_appearance": "2025-08-03",
+          "days_since_last": 52
+        },
+        "23": {
+          "appearances": 4,
+          "average_gap": 553.3333333333334,
+          "min_gap": 198,
+          "max_gap": 824,
+          "median_gap": 638,
+          "gap_std": 321.47368995507753,
+          "last_appearance": "2025-08-02",
+          "days_since_last": 53
+        },
+        "91": {
+          "appearances": 5,
+          "average_gap": 270.25,
+          "min_gap": 139,
+          "max_gap": 518,
+          "median_gap": 212.0,
+          "gap_std": 170.7246808949036,
+          "last_appearance": "2025-07-31",
+          "days_since_last": 55
+        },
+        "55": {
+          "appearances": 4,
+          "average_gap": 247.33333333333334,
+          "min_gap": 52,
+          "max_gap": 628,
+          "median_gap": 62,
+          "gap_std": 329.7049185761919,
+          "last_appearance": "2025-07-26",
+          "days_since_last": 60
+        },
+        "25": {
+          "appearances": 5,
+          "average_gap": 284.25,
+          "min_gap": 46,
+          "max_gap": 502,
+          "median_gap": 294.5,
+          "gap_std": 236.22076538695745,
+          "last_appearance": "2025-07-26",
+          "days_since_last": 60
+        },
+        "82": {
+          "appearances": 6,
+          "average_gap": 309.2,
+          "min_gap": 76,
+          "max_gap": 883,
+          "median_gap": 152,
+          "gap_std": 329.9177170144095,
+          "last_appearance": "2025-07-24",
+          "days_since_last": 62
+        },
+        "46": {
+          "appearances": 4,
+          "average_gap": 520.3333333333334,
+          "min_gap": 15,
+          "max_gap": 1387,
+          "median_gap": 159,
+          "gap_std": 754.0008841727796,
+          "last_appearance": "2025-07-24",
+          "days_since_last": 62
+        },
+        "56": {
+          "appearances": 3,
+          "average_gap": 799.5,
+          "min_gap": 502,
+          "max_gap": 1097,
+          "median_gap": 799.5,
+          "gap_std": 420.72853480599576,
+          "last_appearance": "2025-07-16",
+          "days_since_last": 70
+        },
+        "71": {
+          "appearances": 4,
+          "average_gap": 515,
+          "min_gap": 319,
+          "max_gap": 838,
+          "median_gap": 388,
+          "gap_std": 281.845702468567,
+          "last_appearance": "2025-07-08",
+          "days_since_last": 78
+        },
+        "45": {
+          "appearances": 4,
+          "average_gap": 403.6666666666667,
+          "min_gap": 306,
+          "max_gap": 532,
+          "median_gap": 373,
+          "gap_std": 116.07899609030625,
+          "last_appearance": "2025-07-08",
+          "days_since_last": 78
+        },
+        "30": {
+          "appearances": 3,
+          "average_gap": 677,
+          "min_gap": 319,
+          "max_gap": 1035,
+          "median_gap": 677.0,
+          "gap_std": 506.288455329568,
+          "last_appearance": "2025-06-30",
+          "days_since_last": 86
+        },
+        "2": {
+          "appearances": 4,
+          "average_gap": 484.6666666666667,
+          "min_gap": 31,
+          "max_gap": 776,
+          "median_gap": 647,
+          "gap_std": 398.1461205805393,
+          "last_appearance": "2025-06-23",
+          "days_since_last": 93
+        },
+        "35": {
+          "appearances": 3,
+          "average_gap": 738.5,
+          "min_gap": 669,
+          "max_gap": 808,
+          "median_gap": 738.5,
+          "gap_std": 98.2878425849301,
+          "last_appearance": "2025-06-16",
+          "days_since_last": 100
+        },
+        "87": {
+          "appearances": 5,
+          "average_gap": 310.5,
+          "min_gap": 75,
+          "max_gap": 792,
+          "median_gap": 187.5,
+          "gap_std": 326.7134320267024,
+          "last_appearance": "2025-06-10",
+          "days_since_last": 106
+        },
+        "86": {
+          "appearances": 8,
+          "average_gap": 144.42857142857142,
+          "min_gap": 15,
+          "max_gap": 458,
+          "median_gap": 112,
+          "gap_std": 161.22019842734466,
+          "last_appearance": "2025-06-07",
+          "days_since_last": 109
+        },
+        "81": {
+          "appearances": 8,
+          "average_gap": 194.42857142857142,
+          "min_gap": 3,
+          "max_gap": 1142,
+          "median_gap": 46,
+          "gap_std": 418.4805280786101,
+          "last_appearance": "2025-06-07",
+          "days_since_last": 109
+        },
+        "44": {
+          "appearances": 8,
+          "average_gap": 211.14285714285714,
+          "min_gap": 1,
+          "max_gap": 411,
+          "median_gap": 207,
+          "gap_std": 158.48599156963218,
+          "last_appearance": "2025-06-01",
+          "days_since_last": 115
+        },
+        "40": {
+          "appearances": 4,
+          "average_gap": 350.3333333333333,
+          "min_gap": 61,
+          "max_gap": 839,
+          "median_gap": 151,
+          "gap_std": 425.5835209842286,
+          "last_appearance": "2025-05-31",
+          "days_since_last": 116
+        },
+        "80": {
+          "appearances": 3,
+          "average_gap": 738.5,
+          "min_gap": 335,
+          "max_gap": 1142,
+          "median_gap": 738.5,
+          "gap_std": 570.6351724175438,
+          "last_appearance": "2025-05-31",
+          "days_since_last": 116
+        },
+        "47": {
+          "appearances": 4,
+          "average_gap": 454,
+          "min_gap": 77,
+          "max_gap": 982,
+          "median_gap": 303,
+          "gap_std": 471.01698483175744,
+          "last_appearance": "2025-05-24",
+          "days_since_last": 123
+        },
+        "26": {
+          "appearances": 3,
+          "average_gap": 148.5,
+          "min_gap": 24,
+          "max_gap": 273,
+          "median_gap": 148.5,
+          "gap_std": 176.06958851545033,
+          "last_appearance": "2025-05-24",
+          "days_since_last": 123
+        },
+        "24": {
+          "appearances": 6,
+          "average_gap": 280.2,
+          "min_gap": 8,
+          "max_gap": 562,
+          "median_gap": 312,
+          "gap_std": 235.5763145989002,
+          "last_appearance": "2025-05-16",
+          "days_since_last": 131
+        },
+        "28": {
+          "appearances": 3,
+          "average_gap": 26.5,
+          "min_gap": 4,
+          "max_gap": 49,
+          "median_gap": 26.5,
+          "gap_std": 31.81980515339464,
+          "last_appearance": "2025-05-16",
+          "days_since_last": 131
+        },
+        "72": {
+          "appearances": 4,
+          "average_gap": 322,
+          "min_gap": 45,
+          "max_gap": 618,
+          "median_gap": 303,
+          "gap_std": 286.9721240817651,
+          "last_appearance": "2025-05-08",
+          "days_since_last": 139
+        },
+        "5": {
+          "appearances": 5,
+          "average_gap": 336.75,
+          "min_gap": 39,
+          "max_gap": 548,
+          "median_gap": 380.0,
+          "gap_std": 241.21964403146495,
+          "last_appearance": "2025-04-08",
+          "days_since_last": 169
+        },
+        "84": {
+          "appearances": 4,
+          "average_gap": 527.6666666666666,
+          "min_gap": 77,
+          "max_gap": 1264,
+          "median_gap": 242,
+          "gap_std": 642.9979263833852,
+          "last_appearance": "2025-04-01",
+          "days_since_last": 176
+        },
+        "65": {
+          "appearances": 4,
+          "average_gap": 543,
+          "min_gap": 45,
+          "max_gap": 1218,
+          "median_gap": 366,
+          "gap_std": 606.2004618935885,
+          "last_appearance": "2025-04-01",
+          "days_since_last": 176
+        },
+        "8": {
+          "appearances": 5,
+          "average_gap": 289,
+          "min_gap": 16,
+          "max_gap": 562,
+          "median_gap": 289.0,
+          "gap_std": 279.7355894411721,
+          "last_appearance": "2025-03-16",
+          "days_since_last": 192
+        },
+        "15": {
+          "appearances": 8,
+          "average_gap": 222.71428571428572,
+          "min_gap": 30,
+          "max_gap": 869,
+          "median_gap": 63,
+          "gap_std": 308.08154455474624,
+          "last_appearance": "2025-03-08",
+          "days_since_last": 200
+        },
+        "69": {
+          "appearances": 3,
+          "average_gap": 712,
+          "min_gap": 145,
+          "max_gap": 1279,
+          "median_gap": 712.0,
+          "gap_std": 801.8590898655449,
+          "last_appearance": "2025-02-22",
+          "days_since_last": 214
+        },
+        "93": {
+          "appearances": 4,
+          "average_gap": 485,
+          "min_gap": 229,
+          "max_gap": 898,
+          "median_gap": 328,
+          "gap_std": 361.07755399636795,
+          "last_appearance": "2025-02-22",
+          "days_since_last": 214
+        },
+        "62": {
+          "appearances": 4,
+          "average_gap": 363,
+          "min_gap": 167,
+          "max_gap": 638,
+          "median_gap": 284,
+          "gap_std": 245.236620430147,
+          "last_appearance": "2025-01-24",
+          "days_since_last": 243
+        },
+        "43": {
+          "appearances": 7,
+          "average_gap": 239.83333333333334,
+          "min_gap": 105,
+          "max_gap": 562,
+          "median_gap": 145.5,
+          "gap_std": 189.1638619469022,
+          "last_appearance": "2024-12-24",
+          "days_since_last": 274
+        },
+        "77": {
+          "appearances": 3,
+          "average_gap": 221.5,
+          "min_gap": 123,
+          "max_gap": 320,
+          "median_gap": 221.5,
+          "gap_std": 139.30003589374985,
+          "last_appearance": "2024-12-16",
+          "days_since_last": 282
+        },
+        "51": {
+          "appearances": 6,
+          "average_gap": 306,
+          "min_gap": 8,
+          "max_gap": 1051,
+          "median_gap": 107,
+          "gap_std": 433.66749935866767,
+          "last_appearance": "2024-12-08",
+          "days_since_last": 290
+        },
+        "48": {
+          "appearances": 4,
+          "average_gap": 391,
+          "min_gap": 199,
+          "max_gap": 746,
+          "median_gap": 228,
+          "gap_std": 307.78076613069896,
+          "last_appearance": "2024-10-31",
+          "days_since_last": 328
+        },
+        "53": {
+          "appearances": 3,
+          "average_gap": 258.5,
+          "min_gap": 228,
+          "max_gap": 289,
+          "median_gap": 258.5,
+          "gap_std": 43.1335136523794,
+          "last_appearance": "2024-03-15",
+          "days_since_last": 558
+        },
+        "4": {
+          "appearances": 3,
+          "average_gap": 129.5,
+          "min_gap": 122,
+          "max_gap": 137,
+          "median_gap": 129.5,
+          "gap_std": 10.606601717798213,
+          "last_appearance": "2024-02-29",
+          "days_since_last": 573
+        }
+      },
+      "overdue_numbers": [
+        [
+          4,
+          573,
+          129.5
+        ],
+        [
+          53,
+          558,
+          258.5
+        ],
+        [
+          28,
+          131,
+          26.5
+        ]
+      ],
+      "regular_numbers": [
+        [
+          60,
+          1,
+          217.8
+        ],
+        [
+          37,
+          1,
+          394
+        ],
+        [
+          12,
+          2,
+          218.57142857142858
+        ],
+        [
+          13,
+          3,
+          276.3333333333333
+        ],
+        [
+          14,
+          3,
+          176.75
+        ],
+        [
+          20,
+          3,
+          310
+        ],
+        [
+          89,
+          4,
+          268.8
+        ],
+        [
+          96,
+          4,
+          519.3333333333334
+        ],
+        [
+          38,
+          5,
+          191.44444444444446
+        ],
+        [
+          33,
+          5,
+          907.5
+        ]
+      ],
+      "average_gaps_distribution": {
+        "short_gaps": 0,
+        "medium_gaps": 0,
+        "long_gaps": 86
+      }
+    },
+    "digits": {
+      "digit_patterns": {
+        "units_distribution": {
+          "0": 43,
+          "2": 42,
+          "7": 44,
+          "9": 52,
+          "3": 44,
+          "4": 51,
+          "6": 58,
+          "8": 51,
+          "1": 53,
+          "5": 42
+        },
+        "tens_distribution": {
+          "6": 58,
+          "9": 48,
+          "3": 44,
+          "1": 47,
+          "2": 40,
+          "8": 53,
+          "7": 48,
+          "5": 36,
+          "0": 53,
+          "4": 53
+        },
+        "units_most_common": [
+          [
+            6,
+            58
+          ],
+          [
+            1,
+            53
+          ],
+          [
+            9,
+            52
+          ]
+        ],
+        "tens_most_common": [
+          [
+            6,
+            58
+          ],
+          [
+            8,
+            53
+          ],
+          [
+            0,
+            53
+          ]
+        ]
+      },
+      "mathematical_patterns": {
+        "parity": {
+          "even_ratio": 0.5104166666666666,
+          "odd_ratio": 0.4895833333333333,
+          "even_count": 245,
+          "odd_count": 235
+        },
+        "range_distribution": {
+          "00-19": 100,
+          "20-39": 84,
+          "40-59": 89,
+          "60-79": 106,
+          "80-99": 101
+        },
+        "digit_sums": {
+          "average_sum": 9.179166666666667,
+          "most_common_sums": [
+            [
+              7,
+              48
+            ],
+            [
+              9,
+              46
+            ],
+            [
+              11,
+              43
+            ],
+            [
+              10,
+              41
+            ],
+            [
+              13,
+              37
+            ]
+          ],
+          "sum_range": "0-18"
+        }
+      },
+      "sample_size": 480
+    },
+    "clusters": {
+      "cluster_analysis": {},
+      "cluster_quality": 0,
+      "total_clusters": 0
+    }
+  },
+  "quality_metrics": {
+    "pattern_strength": {
+      "correlation_strength": {
+        "strong_correlations": 25,
+        "total_significant": 25,
+        "strength_ratio": 1.0
+      }
+    },
+    "data_quality": {
+      "temporal_coverage": {
+        "weekday_coverage": 1.0,
+        "seasonal_coverage": 1.0,
+        "overall_temporal_quality": 1.0
+      }
+    },
+    "predictive_indicators": {
+      "overall_predictive_quality": {
+        "score": 0.2333333333333333,
+        "indicators_evaluated": 3,
+        "quality_level": "baja"
+      }
+    }
+  }
+}
