@@ -24,7 +24,7 @@ class LotteryPredictor:
     
     def generate_predictions(
         self, 
-        method: str = "frecuencia_historica", 
+        method: str = "combinado_avanzado", 
         days: int = 5475,  # ~15 años desde 01-08-2010 hasta hoy
         num_predictions: int = 10,
         confidence_threshold: float = 0.7
@@ -33,7 +33,7 @@ class LotteryPredictor:
         Genera predicciones basadas en el método especificado
         
         Args:
-            method: Método de predicción ('frecuencia_historica', 'tendencia_reciente', 'combinado', 'patrones_largo_plazo')
+            method: Método de predicción ('frecuencia_historica', 'tendencia_reciente', 'combinado', 'patrones_largo_plazo', 'combinado_avanzado')
             days: Días de datos históricos (por defecto 5475 = ~15 años desde 01-08-2010)
             num_predictions: Número de predicciones a generar
             confidence_threshold: Umbral mínimo de confianza (0-1)
@@ -52,9 +52,11 @@ class LotteryPredictor:
                 predictions = self._predict_combined_method(days, num_predictions)
             elif method == "patrones_largo_plazo":
                 predictions = self._predict_long_term_patterns(days, num_predictions)
+            elif method == "combinado_avanzado":
+                predictions = self._predict_enhanced_combined_method(days, num_predictions)
             else:
-                # Método por defecto: usar análisis combinado con rango completo de datos históricos
-                predictions = self._predict_combined_method(days, num_predictions)
+                # Método por defecto: usar análisis combinado avanzado
+                predictions = self._predict_enhanced_combined_method(days, num_predictions)
             
             # Filtrar por umbral de confianza
             filtered_predictions = [
@@ -572,6 +574,75 @@ class LotteryPredictor:
         }
         
         return explanation
+    
+    def _predict_enhanced_combined_method(self, days: int, num_predictions: int) -> List[Tuple[int, float, float, str]]:
+        """Método de predicción combinado avanzado integrando análisis de patrones"""
+        
+        # Importar el sistema mejorado
+        try:
+            from enhanced_predictor import EnhancedLotteryPredictor
+            enhanced_predictor = EnhancedLotteryPredictor(self.analyzer.db)
+            
+            # Generar predicciones con umbral más bajo para tener opciones
+            enhanced_predictions = enhanced_predictor.generate_enhanced_predictions(
+                days=days,
+                num_predictions=num_predictions * 2,  # Pedir más para seleccionar las mejores
+                confidence_threshold=0.3
+            )
+            
+            if enhanced_predictions:
+                # Combinar con predicciones tradicionales para balance
+                traditional_predictions = self._predict_combined_method(days, num_predictions)
+                
+                # Crear dict para combinar
+                combined_scores = {}
+                combined_confidence = {}
+                combined_reasons = {}
+                
+                # Peso 70% para método mejorado, 30% para tradicional
+                enhanced_weight = 0.7
+                traditional_weight = 0.3
+                
+                # Procesar predicciones mejoradas
+                for number, score, confidence, reason in enhanced_predictions:
+                    combined_scores[number] = score * enhanced_weight
+                    combined_confidence[number] = confidence * enhanced_weight
+                    combined_reasons[number] = f"Avanzado: {reason[:40]}..."
+                
+                # Agregar predicciones tradicionales
+                for number, score, confidence, reason in traditional_predictions:
+                    if number in combined_scores:
+                        combined_scores[number] += score * traditional_weight
+                        combined_confidence[number] += confidence * traditional_weight
+                        combined_reasons[number] += f" | Clásico: {reason[:25]}..."
+                    else:
+                        combined_scores[number] = score * traditional_weight
+                        combined_confidence[number] = confidence * traditional_weight
+                        combined_reasons[number] = f"Tradicional: {reason}"
+                
+                # Compilar predicciones finales
+                final_predictions = []
+                for number in combined_scores:
+                    final_score = combined_scores[number]
+                    final_confidence = min(combined_confidence[number], 1.0)
+                    final_reason = combined_reasons[number]
+                    
+                    final_predictions.append((number, final_score, final_confidence, final_reason))
+                
+                # Ordenar por puntuación
+                final_predictions.sort(key=lambda x: x[1], reverse=True)
+                
+                return final_predictions[:num_predictions]
+            
+        except ImportError:
+            print("⚠️ Sistema mejorado no disponible, usando método tradicional")
+            pass
+        except Exception as e:
+            print(f"⚠️ Error en sistema mejorado: {e}, usando método tradicional")
+            pass
+        
+        # Fallback: usar método tradicional combinado
+        return self._predict_combined_method(days, num_predictions)
     
     def validate_predictions(self, predictions: List[Tuple]) -> bool:
         """Valida que las predicciones sean coherentes"""
