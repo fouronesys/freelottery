@@ -10,3 +10,5 @@ requests==2.31.0
 trafilatura==1.6.2
 schedule
 pytz
+scikit-learn
+scipy
