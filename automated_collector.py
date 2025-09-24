@@ -14,6 +14,7 @@ import logging
 # Importar nuestros módulos
 from database import DatabaseManager
 from scraper import QuinielaScraperManager
+from timezone_utils import get_dominican_now, get_dominican_today_str, is_data_current
 
 # Configurar logging
 logging.basicConfig(
@@ -48,11 +49,11 @@ class AutomatedLotteryCollector:
         try:
             logger.info("🎯 Iniciando recopilación automática de datos...")
             
-            # Obtener últimos 3 días para asegurar cobertura completa
-            end_date = datetime.now()
+            # Obtener últimos 3 días para asegurar cobertura completa (zona horaria dominicana)
+            end_date = get_dominican_now().replace(tzinfo=None)
             start_date = end_date - timedelta(days=3)
             
-            logger.info(f"📅 Buscando datos desde {start_date.strftime('%Y-%m-%d')} hasta {end_date.strftime('%Y-%m-%d')}")
+            logger.info(f"📅 Buscando datos desde {start_date.strftime('%Y-%m-%d')} hasta {end_date.strftime('%Y-%m-%d')} (UTC-4)")
             
             # Recopilar datos
             results = self.scraper.scrape_historical_data(start_date, end_date)
@@ -71,7 +72,7 @@ class AutomatedLotteryCollector:
                     'success': True,
                     'records_found': len(results),
                     'records_saved': saved_count,
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': get_dominican_now().isoformat()
                 }
             else:
                 logger.warning("⚠️ No se encontraron nuevos datos")
@@ -80,7 +81,7 @@ class AutomatedLotteryCollector:
                 return {
                     'success': False,
                     'reason': 'No data found',
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': get_dominican_now().isoformat()
                 }
                 
         except Exception as e:
@@ -90,11 +91,11 @@ class AutomatedLotteryCollector:
             return {
                 'success': False,
                 'reason': f'Exception: {str(e)}',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': get_dominican_now().isoformat()
             }
         finally:
             self.stats['total_runs'] += 1
-            self.last_collection_time = datetime.now()
+            self.last_collection_time = get_dominican_now()
     
     def fill_missing_dates(self) -> Dict[str, Any]:
         """
@@ -108,25 +109,25 @@ class AutomatedLotteryCollector:
             
             if stats['total_records'] == 0:
                 logger.info("📊 Base de datos vacía, iniciando recopilación inicial...")
-                # Recopilar últimas 2 semanas
-                end_date = datetime.now()
+                # Recopilar últimas 2 semanas (zona horaria dominicana)
+                end_date = get_dominican_now().replace(tzinfo=None)
                 start_date = end_date - timedelta(days=14)
                 
             else:
-                # Identificar vacíos en los datos
+                # Identificar vacíos en los datos (usar zona horaria dominicana)
                 latest_date = datetime.strptime(stats['latest_date'], '%Y-%m-%d')
-                today = datetime.now()
+                today_dominican = get_dominican_now().replace(tzinfo=None)
                 
                 # Si hay un vacío de más de 1 día, llenarlo
-                days_gap = (today - latest_date).days
+                days_gap = (today_dominican.date() - latest_date.date()).days
                 
                 if days_gap <= 1:
-                    logger.info("📅 Datos están actualizados")
+                    logger.info("📅 Datos están actualizados (zona horaria RD)")
                     return {'success': True, 'action': 'no_gaps_found'}
                 
-                logger.info(f"📊 Detectado vacío de {days_gap} días, llenando...")
+                logger.info(f"📊 Detectado vacío de {days_gap} días (zona horaria RD), llenando...")
                 start_date = latest_date + timedelta(days=1)
-                end_date = today
+                end_date = today_dominican
             
             # Recopilar datos para llenar el vacío
             results = self.scraper.scrape_historical_data(start_date, end_date)

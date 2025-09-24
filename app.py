@@ -12,6 +12,7 @@ from scraper import QuinielaScraperManager
 from analyzer import StatisticalAnalyzer
 from predictor import LotteryPredictor
 from utils import format_currency, format_percentage
+from timezone_utils import get_dominican_now, get_dominican_datetime_str
 
 # Función para generar ID de usuario automático
 def get_or_create_user_id():
@@ -27,14 +28,14 @@ def get_or_create_user_id():
         # Si hay ID en la URL, usarlo y guardarlo en session_state
         st.session_state.auto_user_id = uid_from_url
         if 'user_created_at' not in st.session_state:
-            st.session_state.user_created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state.user_created_at = get_dominican_datetime_str()
         return uid_from_url
     
     # Si no hay ID en session_state, generar uno nuevo
     if 'auto_user_id' not in st.session_state:
         unique_id = f"user_{str(uuid.uuid4())[:8]}_{int(time.time())}"
         st.session_state.auto_user_id = unique_id
-        st.session_state.user_created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.session_state.user_created_at = get_dominican_datetime_str()
         
         # Agregar el ID a los parámetros de la URL para persistencia
         try:
