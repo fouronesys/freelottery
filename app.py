@@ -405,12 +405,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
-def initialize_services():
-    """Inicializa los servicios del sistema"""
-    db = DatabaseManager()
-    prediction_service = UnifiedPredictionService(db)
-    analytics_engine = UnifiedAnalyticsEngine(db)
-    return db, prediction_service, analytics_engine
+def initialize_database():
+    """Inicializa solo la base de datos"""
+    return DatabaseManager()
+
+@st.cache_resource
+def initialize_prediction_service(_db):
+    """Inicializa el servicio de predicciones de manera diferida"""
+    return UnifiedPredictionService(_db)
+
+@st.cache_resource  
+def initialize_analytics_engine(_db):
+    """Inicializa el motor de análisis de manera diferida"""
+    return UnifiedAnalyticsEngine(_db)
 
 def main():
     """Función principal de la aplicación"""
@@ -431,48 +438,109 @@ def main():
         "📈 Data & Performance"
     ])
     
-    # Inicializar servicios de manera diferida usando session state
-    if 'services_initialized' not in st.session_state:
-        with st.spinner("🔄 Inicializando servicios del sistema..."):
-            try:
-                db, prediction_service, analytics_engine = initialize_services()
-                st.session_state.db = db
-                st.session_state.prediction_service = prediction_service
-                st.session_state.analytics_engine = analytics_engine
-                st.session_state.services_initialized = True
-                st.session_state.initialization_error = None
-            except Exception as e:
-                st.session_state.services_initialized = False
-                st.session_state.initialization_error = str(e)
-                st.error(f"❌ Error al inicializar servicios: {e}")
-                st.info("Por favor, recarga la página para intentar nuevamente.")
-                return
+    # Inicializar solo la base de datos inmediatamente (operación mínima)
+    if 'db_initialized' not in st.session_state:
+        try:
+            st.session_state.db = initialize_database()
+            st.session_state.db_initialized = True
+        except Exception as e:
+            st.error(f"❌ Error al conectar con la base de datos: {e}")
+            st.stop()
     
-    # Verificar si hay error de inicialización
-    if st.session_state.get('initialization_error'):
-        st.error(f"❌ Error de inicialización: {st.session_state.initialization_error}")
-        if st.button("🔄 Reintentar Inicialización"):
-            del st.session_state['services_initialized']
-            del st.session_state['initialization_error']
-            st.rerun()
-        return
-    
-    # Obtener servicios del session state
     db = st.session_state.db
-    prediction_service = st.session_state.prediction_service
-    analytics_engine = st.session_state.analytics_engine
     
     with tab1:
-        render_dashboard_overview(analytics_engine)
+        # Vista inicial ligera - no cargar nada pesado automáticamente
+        st.header("📊 Bienvenido al Sistema de Análisis")
+        
+        st.markdown("""
+        ### 🎲 Sistema Unificado de Quiniela Loteka
+        
+        Este dashboard te permite analizar patrones históricos y generar predicciones inteligentes 
+        para la Quiniela Loteka utilizando análisis estadístico avanzado.
+        
+        #### ¿Qué puedes hacer aquí?
+        - 📈 **Análisis de Datos**: Visualiza tendencias y patrones históricos
+        - 🎯 **Predicciones**: Genera recomendaciones basadas en múltiples estrategias  
+        - 🔍 **Análisis de Patrones**: Descubre correlaciones y secuencias
+        - 📊 **Rendimiento**: Monitorea la efectividad del sistema
+        """)
+        
+        st.divider()
+        
+        # Botón para cargar el resumen completo  
+        if st.button("🚀 Cargar Resumen Completo del Sistema", type="primary", use_container_width=True):
+            # Inicializar analytics engine solo cuando el usuario lo solicite
+            if 'analytics_engine' not in st.session_state:
+                with st.spinner("🔄 Inicializando motor de análisis..."):
+                    try:
+                        st.session_state.analytics_engine = initialize_analytics_engine(db)
+                    except Exception as e:
+                        st.error(f"❌ Error al inicializar análisis: {e}")
+                        st.stop()
+            
+            # Marcar que debe mostrar el dashboard
+            st.session_state.show_dashboard = True
+            st.rerun()
+        
+        # Mostrar dashboard solo si se solicitó
+        if st.session_state.get('show_dashboard', False):
+            if 'analytics_engine' in st.session_state:
+                render_dashboard_overview(st.session_state.analytics_engine)
+            else:
+                st.warning("⚠️ Motor de análisis no inicializado. Haz clic en el botón de arriba.")
     
     with tab2:
-        render_prediction_lab(prediction_service, analytics_engine)
+        # Inicializar servicios solo cuando se necesiten
+        if 'prediction_service' not in st.session_state:
+            with st.spinner("🔄 Inicializando servicio de predicciones..."):
+                try:
+                    st.session_state.prediction_service = initialize_prediction_service(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar predicciones: {e}")
+                    st.stop()
+        
+        if 'analytics_engine' not in st.session_state:
+            with st.spinner("🔄 Inicializando motor de análisis..."):
+                try:
+                    st.session_state.analytics_engine = initialize_analytics_engine(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar análisis: {e}")
+                    st.stop()
+        
+        render_prediction_lab(st.session_state.prediction_service, st.session_state.analytics_engine)
     
     with tab3:
-        render_pattern_analysis(prediction_service, analytics_engine)
+        # Inicializar servicios solo cuando se necesiten
+        if 'prediction_service' not in st.session_state:
+            with st.spinner("🔄 Inicializando servicio de predicciones..."):
+                try:
+                    st.session_state.prediction_service = initialize_prediction_service(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar predicciones: {e}")
+                    st.stop()
+        
+        if 'analytics_engine' not in st.session_state:
+            with st.spinner("🔄 Inicializando motor de análisis..."):
+                try:
+                    st.session_state.analytics_engine = initialize_analytics_engine(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar análisis: {e}")
+                    st.stop()
+        
+        render_pattern_analysis(st.session_state.prediction_service, st.session_state.analytics_engine)
     
     with tab4:
-        render_data_performance(analytics_engine)
+        # Inicializar analytics engine solo cuando se necesite
+        if 'analytics_engine' not in st.session_state:
+            with st.spinner("🔄 Inicializando motor de análisis..."):
+                try:
+                    st.session_state.analytics_engine = initialize_analytics_engine(db)
+                except Exception as e:
+                    st.error(f"❌ Error al inicializar análisis: {e}")
+                    st.stop()
+        
+        render_data_performance(st.session_state.analytics_engine)
 
 def render_dashboard_overview(analytics_engine):
     """Renderiza el dashboard principal con resumen general"""
@@ -527,814 +595,4 @@ def render_dashboard_overview(analytics_engine):
     
     with col4:
         st.metric(
-            "Números Faltantes",
-            len(overview['missing_numbers']),
-            delta=f"{100 - overview['general_stats']['coverage_percentage']:.1f}% sin aparecer"
-        )
-    
-    # Gráficos principales
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("🔥 Top 10 Números Más Frecuentes")
-        
-        if overview['hot_numbers']:
-            hot_df = pd.DataFrame(overview['hot_numbers'])
-            
-            fig = px.bar(
-                hot_df, 
-                x='number', 
-                y='count',
-                title="Números Más Frecuentes",
-                color='count',
-                color_continuous_scale='Reds'
-            )
-            fig.update_layout(
-                xaxis_title="Número",
-                yaxis_title="Frecuencia",
-                showlegend=False,
-                height=400
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Tabla detallada
-            st.dataframe(
-                hot_df.rename(columns={
-                    'number': 'Número',
-                    'count': 'Apariciones',
-                    'percentage': 'Porcentaje'
-                }),
-                hide_index=True,
-                use_container_width=True
-            )
-    
-    with col2:
-        st.subheader("❄️ Top 10 Números Menos Frecuentes")
-        
-        if overview['cold_numbers']:
-            cold_df = pd.DataFrame(overview['cold_numbers'])
-            
-            fig = px.bar(
-                cold_df, 
-                x='number', 
-                y='count',
-                title="Números Menos Frecuentes",
-                color='count',
-                color_continuous_scale='Blues'
-            )
-            fig.update_layout(
-                xaxis_title="Número",
-                yaxis_title="Frecuencia",
-                showlegend=False,
-                height=400
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Tabla detallada
-            st.dataframe(
-                cold_df.rename(columns={
-                    'number': 'Número',
-                    'count': 'Apariciones',
-                    'percentage': 'Porcentaje'
-                }),
-                hide_index=True,
-                use_container_width=True
-            )
-    
-    # Distribución por rangos
-    st.subheader("📊 Distribución por Rangos")
-    
-    if overview['range_distribution']:
-        ranges_data = []
-        for range_name, data in overview['range_distribution'].items():
-            ranges_data.append({
-                'Rango': range_name,
-                'Cantidad': data['count'],
-                'Porcentaje': data['percentage']
-            })
-        
-        ranges_df = pd.DataFrame(ranges_data)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            fig = px.pie(
-                ranges_df,
-                values='Cantidad',
-                names='Rango',
-                title="Distribución por Rangos"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.dataframe(ranges_df, hide_index=True, use_container_width=True)
-    
-    # Últimos sorteos
-    st.subheader("🆕 Últimos Sorteos")
-    
-    if overview['latest_draws']:
-        for draw in overview['latest_draws']:
-            with st.container():
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    st.write(f"**{draw['date']}**")
-                with col2:
-                    numbers_str = " - ".join([f"**{num:02d}**" for num in draw['numbers']])
-                    st.markdown(f"🎯 {numbers_str}")
-                st.divider()
-
-def render_prediction_lab(prediction_service, analytics_engine):
-    """Renderiza el laboratorio de predicciones"""
-    
-    st.header("🎯 Laboratorio de Predicciones")
-    
-    # Configuración de predicciones
-    st.subheader("⚙️ Configuración de Predicción")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        # Obtener estrategias disponibles
-        strategies = prediction_service.get_available_strategies()
-        strategy_options = {key: config['name'] for key, config in strategies.items()}
-        
-        selected_strategy = st.selectbox(
-            "Estrategia de Predicción:",
-            options=list(strategy_options.keys()),
-            format_func=lambda x: strategy_options[x]
-        )
-    
-    with col2:
-        period_days = st.selectbox(
-            "Período de Datos:",
-            [180, 365, 730, 1825],
-            index=1,  # 365 días por defecto
-            format_func=lambda x: f"{x} días ({x//365:.1f} años)" if x >= 365 else f"{x} días"
-        )
-    
-    with col3:
-        num_predictions = st.slider(
-            "Número de Predicciones:",
-            min_value=5,
-            max_value=20,
-            value=10
-        )
-    
-    with col4:
-        confidence_threshold = st.slider(
-            "Umbral de Confianza:",
-            min_value=0.1,
-            max_value=0.8,
-            value=0.3,
-            step=0.1,
-            format="%.1f"
-        )
-    
-    # Descripción de la estrategia seleccionada
-    if selected_strategy in strategies:
-        strategy_config = strategies[selected_strategy]
-        st.info(f"📋 **{strategy_config['name']}**: {strategy_config['description']}")
-    
-    # ===== NUEVA SECCIÓN: RECOMENDACIONES CIENTÍFICAS ESPECIALES =====
-    st.divider()
-    st.subheader("🧪 Recomendaciones Científicas Especiales")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("### 🎯 Jugada del Día")
-        st.write("Los **3 números** más prometedores para hoy basados en análisis científico avanzado:")
-        
-        if st.button("🎯 Generar Jugada del Día", key="daily_btn"):
-            with st.spinner("🔬 Analizando con machine learning y estadística Bayesiana..."):
-                daily_result = prediction_service.get_daily_recommendation(period_days)
-            
-            if daily_result and 'recommendations' in daily_result:
-                st.success("✅ **JUGADA DEL DÍA GENERADA**")
-                
-                for i, rec in enumerate(daily_result['recommendations'], 1):
-                    confidence_class = (
-                        "confidence-high" if rec['confidence'] >= 0.7 else
-                        "confidence-medium" if rec['confidence'] >= 0.5 else
-                        "confidence-low"
-                    )
-                    
-                    st.markdown(f"""
-                    <div class="metric-card {confidence_class}">
-                        <h4>#{i} - Número {rec['number']:02d}</h4>
-                        <p><strong>Probabilidad:</strong> {rec['probability']:.4f}</p>
-                        <p><strong>Confianza:</strong> {rec['confidence']:.3f}</p>
-                        <p><strong>Análisis:</strong> {rec['reasoning']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Mostrar resumen científico
-                st.info(f"🧬 **Método:** {daily_result.get('analysis_method', 'Ensemble Científico')}")
-            else:
-                st.error("❌ No se pudo generar la jugada del día")
-    
-    with col2:
-        st.markdown("### 📅 Números para la Semana")
-        st.write("Los **3 números** más estables para jugar durante toda la semana:")
-        
-        if st.button("📅 Generar Números Semanales", key="weekly_btn"):
-            with st.spinner("📊 Calculando estabilidad y patrones temporales..."):
-                weekly_result = prediction_service.get_weekly_recommendation(period_days)
-            
-            if weekly_result and 'recommendations' in weekly_result:
-                st.success("✅ **NÚMEROS SEMANALES GENERADOS**")
-                
-                for i, rec in enumerate(weekly_result['recommendations'], 1):
-                    stability_score = rec.get('stability_score', rec.get('probability', 0))
-                    
-                    st.markdown(f"""
-                    <div class="metric-card confidence-medium">
-                        <h4>#{i} - Número {rec['number']:02d}</h4>
-                        <p><strong>Score de Estabilidad:</strong> {stability_score:.4f}</p>
-                        <p><strong>Confianza:</strong> {rec['confidence']:.3f}</p>
-                        <p><strong>Análisis:</strong> {rec['reasoning']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Mostrar resumen científico
-                st.info(f"📈 **Método:** {weekly_result.get('analysis_method', 'Análisis de Estabilidad')}")
-            else:
-                st.error("❌ No se pudieron generar números semanales")
-    
-    st.divider()
-    
-    # Botón para generar predicciones (original)
-    if st.button("🚀 Generar Predicciones", type="primary", use_container_width=True):
-        
-        with st.spinner("Generando predicciones inteligentes..."):
-            result = prediction_service.generate_predictions(
-                strategy=selected_strategy,
-                days=period_days,
-                num_predictions=num_predictions,
-                confidence_threshold=confidence_threshold
-            )
-        
-        if 'error' in result:
-            st.error(f"❌ {result['error']}")
-            return
-        
-        # Mostrar predicciones
-        st.subheader("🎯 Predicciones Generadas")
-        
-        if result['predictions']:
-            # Estadísticas de las predicciones
-            stats = result['statistics']
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Total Predicciones", stats['total_predictions'])
-            with col2:
-                st.metric("Score Promedio", stats['score_stats']['average'])
-            with col3:
-                st.metric("Confianza Promedio", f"{stats['confidence_stats']['average']:.1%}")
-            with col4:
-                st.metric("Alta Confianza", stats['confidence_distribution']['alta'])
-            
-            # Lista de predicciones
-            st.subheader("📋 Lista de Predicciones")
-            
-            for pred in result['predictions']:
-                confidence_class = (
-                    "confidence-high" if pred['confidence'] >= 0.8 else
-                    "confidence-medium" if pred['confidence'] >= 0.6 else
-                    "confidence-low"
-                )
-                
-                with st.container():
-                    st.markdown(f"""
-                    <div class="metric-card {confidence_class}">
-                        <h4>#{pred['rank']} - Número {pred['number']:02d}</h4>
-                        <p><strong>Score:</strong> {pred['score']} | 
-                           <strong>Confianza:</strong> {pred['confidence']:.1%} ({pred['confidence_level']})</p>
-                        <p><strong>Componentes:</strong> {', '.join(pred['active_components'])}</p>
-                        <p><strong>Análisis:</strong> {pred['reasoning']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            # Análisis de componentes
-            st.subheader("🔍 Análisis de Componentes")
-            
-            if 'component_contributions' in result:
-                components_data = []
-                for component, data in result['component_contributions'].items():
-                    components_data.append({
-                        'Componente': component.title(),
-                        'Peso': f"{data['weight']:.1%}",
-                        'Números Encontrados': data['numbers_found'],
-                        'En Predicciones': data['numbers_in_predictions'],
-                        'Efectividad': f"{data['effectiveness']:.1%}"
-                    })
-                
-                components_df = pd.DataFrame(components_data)
-                st.dataframe(components_df, hide_index=True, use_container_width=True)
-            
-            # Opción para guardar predicciones
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button("💾 Guardar Predicciones"):
-                    filename = f"predicciones_{selected_strategy}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        json.dump(result, f, indent=2, ensure_ascii=False, default=str)
-                    st.success(f"✅ Predicciones guardadas en: {filename}")
-            
-            with col2:
-                # Análisis individual de números
-                selected_number = st.selectbox(
-                    "Analizar número específico:",
-                    options=[pred['number'] for pred in result['predictions']],
-                    format_func=lambda x: f"Número {x:02d}"
-                )
-                
-                if st.button("🔍 Analizar Número"):
-                    with st.spinner("Analizando número..."):
-                        number_analysis = analytics_engine.get_number_analysis(selected_number, period_days)
-                    
-                    if 'error' not in number_analysis:
-                        st.subheader(f"📊 Análisis del Número {selected_number:02d}")
-                        
-                        freq_analysis = number_analysis['frequency_analysis']
-                        timing_analysis = number_analysis['timing_analysis']
-                        
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            st.metric(
-                                "Apariciones",
-                                freq_analysis['appearances'],
-                                delta=f"{freq_analysis['frequency_percentage']:.1f}%"
-                            )
-                        
-                        with col2:
-                            st.metric(
-                                "Última Aparición",
-                                timing_analysis['last_appearance'] or "N/A"
-                            )
-                        
-                        with col3:
-                            st.metric(
-                                "Días Desde Última",
-                                timing_analysis['days_since_last'] or "N/A"
-                            )
-                        
-                        # Estado de predicción
-                        status = timing_analysis['prediction_status']
-                        status_emoji = {
-                            'overdue': '🔥',
-                            'recent': '❄️',
-                            'normal': '📊'
-                        }
-                        
-                        status_text = {
-                            'overdue': 'Número atrasado - alta probabilidad',
-                            'recent': 'Apareció recientemente - baja probabilidad',
-                            'normal': 'En rango normal de aparición'
-                        }
-                        
-                        st.info(f"{status_emoji.get(status, '📊')} {status_text.get(status, 'Estado normal')}")
-        
-        else:
-            st.warning("⚠️ No se generaron predicciones con el umbral de confianza especificado. Intenta reducir el umbral.")
-
-def render_data_performance(analytics_engine):
-    """Renderiza la sección de datos y rendimiento"""
-    
-    st.header("📈 Datos y Rendimiento del Sistema")
-    
-    # Métricas de rendimiento
-    with st.spinner("Cargando métricas de rendimiento..."):
-        performance = analytics_engine.get_performance_metrics(days=90)
-    
-    if 'error' in performance:
-        st.error(f"❌ {performance['error']}")
-        return
-    
-    # Resumen de datos
-    st.subheader("📊 Resumen de Datos")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(
-            "Total de Sorteos",
-            performance['data_summary']['total_draws']
-        )
-    
-    with col2:
-        st.metric(
-            "Números Únicos",
-            performance['data_summary']['unique_numbers']
-        )
-    
-    with col3:
-        st.metric(
-            "Días con Datos",
-            performance['data_summary']['unique_dates']
-        )
-    
-    with col4:
-        st.metric(
-            "Promedio Diario",
-            performance['data_summary']['average_draws_per_day']
-        )
-    
-    # Calidad de datos
-    st.subheader("🔍 Calidad de Datos")
-    
-    quality = performance['data_quality']
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric(
-            "Completitud",
-            f"{quality['completeness']}%",
-            delta="Cobertura de números"
-        )
-        
-        st.metric(
-            "Densidad de Datos",
-            f"{quality['data_density']}%",
-            delta="Días con datos"
-        )
-    
-    with col2:
-        consistency_color = "normal" if quality['consistency'] == 'good' else "inverse"
-        st.metric(
-            "Consistencia",
-            quality['consistency'].title(),
-            delta=f"{quality['coverage_days']} de {performance['period']['days']} días",
-            delta_color=consistency_color
-        )
-    
-    # Actividad reciente
-    st.subheader("🕐 Actividad Reciente")
-    
-    recent = performance['recent_activity']
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "Últimos 7 Días",
-            recent['last_7_days'],
-            delta=f"{recent['daily_average']} por día"
-        )
-    
-    with col2:
-        st.metric(
-            "Última Actualización",
-            recent['last_update'] or "N/A"
-        )
-    
-    with col3:
-        cache_status = performance['cache_status']
-        total_cache = sum(cache_status.values())
-        st.metric(
-            "Cache del Sistema",
-            total_cache,
-            delta="entradas activas"
-        )
-    
-    # Insights de patrones
-    st.subheader("🎯 Insights de Patrones")
-    
-    with st.spinner("Analizando patrones..."):
-        patterns = analytics_engine.get_pattern_insights(days=180)
-    
-    if 'error' not in patterns:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("🔢 Análisis de Dígitos")
-            
-            # Dígitos de unidades favoritos
-            fav_units = patterns['digit_patterns']['favorite_units']
-            units_df = pd.DataFrame(fav_units, columns=['Dígito', 'Frecuencia'])
-            
-            fig = px.bar(
-                units_df.head(5),
-                x='Dígito',
-                y='Frecuencia',
-                title="Top 5 Dígitos de Unidades"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("📊 Análisis de Paridad")
-            
-            parity = patterns['parity_analysis']
-            
-            parity_df = pd.DataFrame([
-                {'Tipo': 'Pares', 'Cantidad': parity['even_count'], 'Porcentaje': parity['even_percentage']},
-                {'Tipo': 'Impares', 'Cantidad': parity['odd_count'], 'Porcentaje': parity['odd_percentage']}
-            ])
-            
-            fig = px.pie(
-                parity_df,
-                values='Cantidad',
-                names='Tipo',
-                title="Distribución Par/Impar"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Resumen de insights
-        if patterns['summary']:
-            st.subheader("💡 Insights Clave")
-            for insight in patterns['summary']:
-                st.info(f"🔍 {insight}")
-        
-        # Números faltantes
-        missing = patterns['missing_numbers']
-        if missing['numbers']:
-            st.subheader("❄️ Números Sin Aparecer")
-            st.warning(f"⚠️ {missing['count']} números ({missing['percentage']}%) no han aparecido en los últimos 180 días")
-            
-            # Mostrar números faltantes en formato compacto
-            missing_chunks = [missing['numbers'][i:i+10] for i in range(0, len(missing['numbers']), 10)]
-            for chunk in missing_chunks:
-                numbers_str = " - ".join([f"{num:02d}" for num in chunk])
-                st.code(numbers_str)
-    
-    # Controles del sistema
-    st.subheader("🔧 Controles del Sistema")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("🗑️ Limpiar Cache", help="Limpia el cache del sistema para refrescar datos"):
-            analytics_engine.clear_cache()
-            st.success("✅ Cache limpiado")
-    
-    with col2:
-        if st.button("🔄 Recargar Servicios", help="Reinicia los servicios del sistema"):
-            st.cache_resource.clear()
-            st.success("✅ Servicios recargados")
-            st.rerun()
-    
-    with col3:
-        if st.button("📥 Exportar Datos", help="Exporta datos del sistema"):
-            export_data = {
-                'performance': performance,
-                'patterns': patterns if 'error' not in patterns else {},
-                'export_date': datetime.now().isoformat()
-            }
-            
-            filename = f"system_export_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(export_data, f, indent=2, ensure_ascii=False, default=str)
-            
-            st.success(f"✅ Datos exportados a: {filename}")
-
-def render_pattern_analysis(prediction_service, analytics_engine):
-    """Renderiza el análisis avanzado de patrones"""
-    
-    st.header("🔍 Análisis Avanzado de Patrones")
-    
-    # Configuración del análisis
-    st.subheader("⚙️ Configuración del Análisis")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        pattern_days = st.selectbox(
-            "Período de Análisis:",
-            [180, 365, 730, 1825],  # 5 años
-            index=3,  # 5 años por defecto
-            format_func=lambda x: f"{x} días ({x//365:.1f} años)" if x >= 365 else f"{x} días"
-        )
-    
-    with col2:
-        show_pattern_details = st.checkbox(
-            "Mostrar Detalles Técnicos",
-            value=False,
-            help="Muestra información técnica sobre los algoritmos de detección"
-        )
-    
-    with col3:
-        auto_compute = st.checkbox(
-            "Auto-Computar",
-            value=True,
-            help="Computa automáticamente los patrones al cambiar parámetros"
-        )
-    
-    # Botón manual para computar patrones
-    compute_button = st.button("🔬 Analizar Patrones", key="compute_patterns_btn")
-    
-    if auto_compute or compute_button:
-        with st.spinner(f"🔍 Analizando patrones en {pattern_days} días de datos..."):
-            try:
-                # Obtener el motor de patrones del servicio de predicciones
-                pattern_engine = prediction_service.pattern_engine
-                
-                # Computar patrones
-                pattern_results = pattern_engine.compute_patterns(pattern_days)
-                
-                # Obtener puntuaciones de números
-                number_scores = pattern_engine.score_numbers(pattern_days)
-                
-                # Mostrar resultados
-                render_pattern_results(pattern_results, number_scores, show_pattern_details)
-                
-            except Exception as e:
-                st.error(f"❌ Error analizando patrones: {e}")
-                st.info("💡 Asegúrate de que tienes suficientes datos históricos para el análisis.")
-                import traceback
-                with st.expander("Ver detalles del error"):
-                    st.code(traceback.format_exc())
-    else:
-        st.info("👆 Haz clic en 'Analizar Patrones' para comenzar el análisis")
-
-def render_pattern_results(pattern_results, number_scores, show_details):
-    """Renderiza los resultados del análisis de patrones"""
-    
-    st.divider()
-    st.subheader("📊 Resultados del Análisis")
-    
-    # Estadísticas generales
-    if 'summary_stats' in pattern_results:
-        stats = pattern_results['summary_stats']
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                "Patrones Detectados",
-                stats.get('total_patterns_detected', 0),
-                delta=f"{len(stats.get('patterns_by_type', {}))} tipos"
-            )
-        
-        with col2:
-            st.metric(
-                "Fuerza Promedio",
-                f"{stats.get('average_strength', 0):.3f}",
-                delta="0-1 escala"
-            )
-        
-        with col3:
-            st.metric(
-                "Soporte Total",
-                stats.get('total_support', 0),
-                delta="ocurrencias"
-            )
-        
-        with col4:
-            numbers_with_patterns = len([n for n, s in number_scores.items() if s['score'] > 0])
-            st.metric(
-                "Números Afectados",
-                numbers_with_patterns,
-                delta=f"{numbers_with_patterns}% cobertura"
-            )
-    
-    # Patrones por tipo
-    if 'patterns' in pattern_results:
-        st.subheader("🎯 Patrones por Tipo")
-        
-        pattern_tabs = st.tabs(["🔄 Secuenciales", "📅 Cíclicos", "🔗 Correlaciones"])
-        
-        # Tab de patrones secuenciales
-        with pattern_tabs[0]:
-            render_sequential_patterns(pattern_results.get('patterns', {}).get('sequential', {}), show_details)
-        
-        # Tab de patrones cíclicos  
-        with pattern_tabs[1]:
-            render_cyclical_patterns(pattern_results.get('patterns', {}).get('cyclical', {}), show_details)
-        
-        # Tab de patrones de correlación
-        with pattern_tabs[2]:
-            render_correlation_patterns(pattern_results.get('patterns', {}).get('correlation', {}), show_details)
-    
-    # Top números con mejores puntuaciones de patrones
-    st.subheader("🏆 Top Números por Puntuación de Patrones")
-    
-    if number_scores:
-        # Ordenar números por puntuación
-        sorted_numbers = sorted(
-            [(num, data) for num, data in number_scores.items() if data['score'] > 0],
-            key=lambda x: x[1]['score'],
-            reverse=True
-        )[:15]  # Top 15
-        
-        if sorted_numbers:
-            for rank, (number, data) in enumerate(sorted_numbers, 1):
-                confidence_class = (
-                    "confidence-high" if data['confidence'] >= 0.7 else
-                    "confidence-medium" if data['confidence'] >= 0.5 else
-                    "confidence-low"
-                )
-                
-                # Generar resumen de patrones
-                pattern_summary = []
-                for pattern_type, details_list in data.get('details', {}).items():
-                    if isinstance(details_list, list) and details_list:
-                        pattern_summary.append(f"{pattern_type}: {len(details_list)} patrones")
-                
-                summary_text = " | ".join(pattern_summary) if pattern_summary else "Patrones básicos"
-                
-                st.markdown(f"""
-                <div class="metric-card {confidence_class}">
-                    <h4>#{rank} - Número {number:02d}</h4>
-                    <p><strong>Puntuación de Patrones:</strong> {data['score']:.2f}</p>
-                    <p><strong>Confianza:</strong> {data['confidence']:.3f}</p>
-                    <p><strong>Patrones:</strong> {summary_text}</p>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("No se encontraron números con puntuaciones significativas de patrones.")
-    else:
-        st.info("No hay datos de puntuación de números disponibles.")
-
-def render_sequential_patterns(sequential_data, show_details):
-    """Renderiza información de patrones secuenciales"""
-    
-    if 'patterns' in sequential_data and sequential_data['patterns']:
-        st.write(f"**🔄 {len(sequential_data['patterns'])} patrones secuenciales detectados**")
-        
-        for i, pattern in enumerate(sequential_data['patterns'][:5], 1):  # Mostrar top 5
-            with st.expander(f"Patrón Secuencial #{i} - Fuerza: {pattern.get('strength', 0):.3f}"):
-                signature = pattern.get('signature', {})
-                
-                if signature.get('type') == 'markov_transition':
-                    st.write(f"**Tipo:** Transición de Markov")
-                    st.write(f"**Desde número:** {signature.get('from_number')}")
-                    st.write(f"**Transiciones detectadas:** {signature.get('transition_count')}")
-                
-                if show_details and 'number_scores' in pattern:
-                    st.write("**Números afectados:**")
-                    for num, score_data in list(pattern['number_scores'].items())[:5]:
-                        st.write(f"  • {num}: {score_data.get('reasoning', 'Sin detalles')}")
-    else:
-        st.info("No se detectaron patrones secuenciales significativos.")
-
-def render_cyclical_patterns(cyclical_data, show_details):
-    """Renderiza información de patrones cíclicos"""
-    
-    if 'patterns' in cyclical_data and cyclical_data['patterns']:
-        st.write(f"**📅 {len(cyclical_data['patterns'])} patrones cíclicos detectados**")
-        
-        for i, pattern in enumerate(cyclical_data['patterns'][:5], 1):  # Mostrar top 5
-            with st.expander(f"Patrón Cíclico #{i} - Fuerza: {pattern.get('strength', 0):.3f}"):
-                signature = pattern.get('signature', {})
-                pattern_type = signature.get('type', 'unknown')
-                
-                if pattern_type == 'weekday_bias':
-                    st.write(f"**Tipo:** Sesgo por día de la semana")
-                    st.write(f"**Número:** {signature.get('number')}")
-                    st.write(f"**Días significativos:** {signature.get('significant_days')}")
-                
-                elif pattern_type == 'monthly_seasonal':
-                    st.write(f"**Tipo:** Patrón estacional mensual")
-                    st.write(f"**Número:** {signature.get('number')}")
-                    peak_months = signature.get('peak_months', [])
-                    if peak_months:
-                        month_names = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-                                     'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-                        peak_names = [month_names[m-1] for m in peak_months if 1 <= m <= 12]
-                        st.write(f"**Meses pico:** {', '.join(peak_names)}")
-                
-                if show_details and 'number_scores' in pattern:
-                    st.write("**Detalles técnicos:**")
-                    for num, score_data in list(pattern['number_scores'].items())[:3]:
-                        st.write(f"  • {num}: {score_data.get('reasoning', 'Sin detalles')}")
-    else:
-        st.info("No se detectaron patrones cíclicos significativos.")
-
-def render_correlation_patterns(correlation_data, show_details):
-    """Renderiza información de patrones de correlación"""
-    
-    if 'patterns' in correlation_data and correlation_data['patterns']:
-        st.write(f"**🔗 {len(correlation_data['patterns'])} patrones de correlación detectados**")
-        
-        for i, pattern in enumerate(correlation_data['patterns'][:5], 1):  # Mostrar top 5
-            with st.expander(f"Correlación #{i} - Fuerza: {pattern.get('strength', 0):.3f}"):
-                signature = pattern.get('signature', {})
-                
-                if signature.get('type') == 'number_correlation':
-                    numbers = signature.get('numbers', [])
-                    pmi_score = signature.get('pmi_score', 0)
-                    
-                    st.write(f"**Tipo:** Correlación entre números")
-                    st.write(f"**Números correlacionados:** {numbers[0]} ↔ {numbers[1]}")
-                    st.write(f"**PMI Score:** {pmi_score:.3f}")
-                    
-                    if show_details:
-                        params = pattern.get('params', {})
-                        st.write(f"**Chi-cuadrado:** {params.get('chi_square', 0):.2f}")
-                        st.write(f"**P-valor estimado:** {params.get('p_value_estimate', 0):.4f}")
-                
-                if show_details and 'number_scores' in pattern:
-                    st.write("**Números afectados:**")
-                    for num, score_data in pattern['number_scores'].items():
-                        other_num = score_data.get('details', {}).get('correlated_with', 'N/A')
-                        st.write(f"  • {num} (correlacionado con {other_num})")
-    else:
-        st.info("No se detectaron correlaciones significativas entre números.")
-
-if __name__ == "__main__":
-    main()
+            "N
