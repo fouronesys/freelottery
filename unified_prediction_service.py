@@ -4,6 +4,16 @@ Servicio de Predicciones Unificado - Quiniela Loteka
 Combina toda la funcionalidad de predicción en un solo servicio configurable
 """
 
+import time
+import sys
+
+def log_timing(message):
+    timestamp = time.time()
+    print(f"[PREDICTION-SERVICE {timestamp:.3f}] {message}", flush=True)
+    sys.stdout.flush()
+
+log_timing("🔄 INICIO: Importando librerías para UnifiedPredictionService...")
+
 import numpy as np
 import pandas as pd
 import json
@@ -12,19 +22,30 @@ from typing import List, Tuple, Dict, Any, Optional
 import statistics
 import math
 from collections import defaultdict, Counter
+
+log_timing("🔄 INICIO: Importando servicios pesados...")
 from database import DatabaseManager
+log_timing("🔄 INICIO: Importando StatisticalAnalyzer...")
 from analyzer import StatisticalAnalyzer
+log_timing("🔄 INICIO: Importando SimplifiedScientificPredictor...")
 from scientific_predictor_simple import SimplifiedScientificPredictor
+log_timing("🔄 INICIO: Importando PatternEngine...")
 from pattern_engine import PatternEngine
+log_timing("✅ COMPLETADO: Todas las importaciones de UnifiedPredictionService")
 
 class UnifiedPredictionService:
     """Servicio unificado de predicciones con múltiples estrategias"""
     
     def __init__(self, db_manager: DatabaseManager):
+        log_timing("🔄 INICIO: Constructor UnifiedPredictionService...")
         self.db = db_manager
+        log_timing("🔄 INICIO: Inicializando StatisticalAnalyzer...")
         self.analyzer = StatisticalAnalyzer(db_manager)
+        log_timing("🔄 INICIO: Inicializando SimplifiedScientificPredictor...")
         self.scientific_predictor = SimplifiedScientificPredictor(db_manager)
+        log_timing("🔄 INICIO: Inicializando PatternEngine...")
         self.pattern_engine = PatternEngine(db_manager)
+        log_timing("✅ COMPLETADO: Constructor UnifiedPredictionService")
         self.number_range = (0, 99)
         
         # Estrategias de predicción disponibles

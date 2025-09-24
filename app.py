@@ -4,6 +4,17 @@ Sistema Unificado de Análisis de Quiniela Loteka
 Interfaz simplificada con 3 secciones principales
 """
 
+import time
+import sys
+
+# Sistema de logging para debugging en CapRover
+def log_timing(message):
+    timestamp = time.time()
+    print(f"[TIMING {timestamp:.3f}] {message}", flush=True)
+    sys.stdout.flush()
+
+log_timing("🚀 INICIO: Importando librerías básicas...")
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -11,10 +22,16 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import json
 
+log_timing("✅ COMPLETADO: Librerías básicas importadas")
+
 # Importar los nuevos servicios unificados
+log_timing("🔄 INICIO: Importando servicios unificados...")
 from unified_prediction_service import UnifiedPredictionService
+log_timing("✅ COMPLETADO: UnifiedPredictionService importado")
 from unified_analytics_engine import UnifiedAnalyticsEngine
+log_timing("✅ COMPLETADO: UnifiedAnalyticsEngine importado")
 from database import DatabaseManager
+log_timing("✅ COMPLETADO: DatabaseManager importado")
 
 # Configuración de página
 st.set_page_config(
@@ -407,47 +424,69 @@ st.markdown("""
 @st.cache_resource
 def initialize_database():
     """Inicializa solo la base de datos"""
-    return DatabaseManager()
+    log_timing("🔄 INICIO: Inicializando DatabaseManager...")
+    db = DatabaseManager()
+    log_timing("✅ COMPLETADO: DatabaseManager inicializado")
+    return db
 
 @st.cache_resource
 def initialize_prediction_service(_db):
     """Inicializa el servicio de predicciones de manera diferida"""
-    return UnifiedPredictionService(_db)
+    log_timing("🔄 INICIO: Inicializando UnifiedPredictionService...")
+    service = UnifiedPredictionService(_db)
+    log_timing("✅ COMPLETADO: UnifiedPredictionService inicializado")
+    return service
 
 @st.cache_resource  
 def initialize_analytics_engine(_db):
     """Inicializa el motor de análisis de manera diferida"""
-    return UnifiedAnalyticsEngine(_db)
+    log_timing("🔄 INICIO: Inicializando UnifiedAnalyticsEngine...")
+    engine = UnifiedAnalyticsEngine(_db)
+    log_timing("✅ COMPLETADO: UnifiedAnalyticsEngine inicializado")
+    return engine
 
 def main():
     """Función principal de la aplicación"""
     
+    log_timing("🔄 INICIO: Función main() ejecutándose...")
+    
     # Header principal - renderizar INMEDIATAMENTE para evitar "Please wait..."
+    log_timing("🔄 INICIO: Renderizando header...")
     st.markdown("""
     <div class="main-header">
         <h1>🎲 Quiniela Loteka - Sistema de Análisis Unificado</h1>
         <p>Predicciones inteligentes basadas en análisis estadístico avanzado</p>
     </div>
     """, unsafe_allow_html=True)
+    log_timing("✅ COMPLETADO: Header renderizado")
     
     # Navegación principal - crear tabs inmediatamente
+    log_timing("🔄 INICIO: Creando tabs...")
     tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Dashboard Overview", 
         "🎯 Prediction Lab", 
         "🔍 Pattern Analysis",
         "📈 Data & Performance"
     ])
+    log_timing("✅ COMPLETADO: Tabs creados")
     
     # Inicializar solo la base de datos inmediatamente (operación mínima)
+    log_timing("🔄 INICIO: Verificando inicialización de DB...")
     if 'db_initialized' not in st.session_state:
+        log_timing("🔄 INICIO: DB no inicializada, inicializando...")
         try:
             st.session_state.db = initialize_database()
             st.session_state.db_initialized = True
+            log_timing("✅ COMPLETADO: DB inicializada y guardada en session_state")
         except Exception as e:
+            log_timing(f"❌ ERROR: Error al conectar con la base de datos: {e}")
             st.error(f"❌ Error al conectar con la base de datos: {e}")
             st.stop()
+    else:
+        log_timing("✅ COMPLETADO: DB ya estaba inicializada en session_state")
     
     db = st.session_state.db
+    log_timing("🔄 INICIO: Entrando a procesamiento de tabs...")
     
     with tab1:
         # Vista inicial ligera - no cargar nada pesado automáticamente
@@ -1405,4 +1444,7 @@ def render_correlation_patterns(correlation_data, show_details):
         st.info("No se detectaron correlaciones significativas entre números.")
 
 if __name__ == "__main__":
+    log_timing("🚀 INICIO: Archivo app.py ejecutándose...")
+    log_timing("🔄 INICIO: Llamando a main()...")
     main()
+    log_timing("✅ COMPLETADO: main() terminado, app.py completado")

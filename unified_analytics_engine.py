@@ -4,18 +4,32 @@ Motor de Análisis Unificado - Quiniela Loteka
 Consolida toda la funcionalidad de análisis en un solo motor eficiente
 """
 
+import time
+import sys
+
+def log_timing(message):
+    timestamp = time.time()
+    print(f"[ANALYTICS-ENGINE {timestamp:.3f}] {message}", flush=True)
+    sys.stdout.flush()
+
+log_timing("🔄 INICIO: Importando librerías para UnifiedAnalyticsEngine...")
+
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional
 import statistics
 from collections import defaultdict, Counter
+
+log_timing("🔄 INICIO: Importando DatabaseManager...")
 from database import DatabaseManager
+log_timing("✅ COMPLETADO: Todas las importaciones de UnifiedAnalyticsEngine")
 
 class UnifiedAnalyticsEngine:
     """Motor de análisis unificado con cache inteligente"""
     
     def __init__(self, db_manager: DatabaseManager):
+        log_timing("🔄 INICIO: Constructor UnifiedAnalyticsEngine...")
         self.db = db_manager
         self.number_range = (0, 99)
         
@@ -31,6 +45,7 @@ class UnifiedAnalyticsEngine:
             'medium': 1800,    # 30 minutos
             'long': 7200       # 2 horas
         }
+        log_timing("✅ COMPLETADO: Constructor UnifiedAnalyticsEngine")
     
     def get_dashboard_overview(self, days: int = 365) -> Dict[str, Any]:
         """Obtiene resumen completo para dashboard principal"""

@@ -1,16 +1,32 @@
+import time
+import sys
+
+def log_timing(message):
+    timestamp = time.time()
+    print(f"[DATABASE {timestamp:.3f}] {message}", flush=True)
+    sys.stdout.flush()
+
+log_timing("🔄 INICIO: Importando librerías para DatabaseManager...")
+
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Tuple, Optional, Dict, Any
 import os
 
+log_timing("✅ COMPLETADO: Importaciones DatabaseManager")
+
 class DatabaseManager:
     """Gestiona la base de datos SQLite para almacenar resultados de lotería"""
     
     def __init__(self, db_path: str = "quiniela_loteka.db"):
+        log_timing("🔄 INICIO: Constructor DatabaseManager...")
         self.db_path = db_path
+        log_timing("🔄 INICIO: Llamando init_database()...")
         self.init_database()
+        log_timing("🔄 INICIO: Llamando _optimize_database()...")
         self._optimize_database()
+        log_timing("✅ COMPLETADO: Constructor DatabaseManager")
     
     def init_database(self):
         """Inicializa la base de datos y crea las tablas necesarias"""

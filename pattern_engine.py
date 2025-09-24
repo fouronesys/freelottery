@@ -115,9 +115,10 @@ class PatternEngine:
             Dict {número: {score, confidence, details}}
         """
         
-        # Asegurar que los patrones estén computados y obtener batch_id actual
-        pattern_results = self.compute_patterns(days)
-        current_batch_id = pattern_results.get('current_batch_id')
+        # NO ejecutar compute_patterns automáticamente - usar patrones existentes
+        # pattern_results = self.compute_patterns(days)  # DESHABILITADO para evitar bloqueo en CapRover
+        # current_batch_id = pattern_results.get('current_batch_id')
+        current_batch_id = None  # Se determinará de los patrones existentes
         
         # Obtener patrones activos del batch actual únicamente
         active_patterns = self.get_active_patterns(days, min_score=0.1, batch_id=current_batch_id)
