@@ -1,0 +1,155 @@
+{
+  "generation_time": "2025-09-24T02:23:34.614563",
+  "total_predictions": 15,
+  "methodology": "Análisis multifactor mejorado",
+  "factors_used": [
+    "frequency",
+    "gap_analysis",
+    "correlations",
+    "temporal",
+    "mathematical"
+  ],
+  "predictions": [
+    {
+      "rank": 1,
+      "number": 4,
+      "score": 31.03,
+      "confidence": 0.417,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 3 apariciones (1.9%) | Gap: Atrasado 573d (prom: 129.5d) | Math: Decena 0 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 2,
+      "number": 28,
+      "score": 30.23,
+      "confidence": 0.357,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 3 apariciones (1.9%) | Gap: Atrasado 131d (prom: 26.5d)",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 3,
+      "number": 53,
+      "score": 19.66,
+      "confidence": 0.357,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 3 apariciones (1.9%) | Gap: Atrasado 558d (prom: 258.5d)",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 4,
+      "number": 7,
+      "score": 10.69,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 13 apariciones (8.1%) | Gap: Regular 8d vs 135.8d prom | Math: Decena 0 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 5,
+      "number": 66,
+      "score": 9.31,
+      "confidence": 0.463,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 11 apariciones (6.9%) | Gap: Regular 31d vs 116.6d prom | Temp: Patrón Miércoles: 4/60",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 6,
+      "number": 68,
+      "score": 7.17,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 10 apariciones (6.2%) | Gap: Regular 30d vs 185.2d prom | Math: Decena 6 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 7,
+      "number": 38,
+      "score": 6.37,
+      "confidence": 0.35,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 10 apariciones (6.2%) | Gap: Regular 5d vs 191.4d prom",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 8,
+      "number": 49,
+      "score": 6.0,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 9 apariciones (5.6%) | Gap: Regular 23d vs 207.4d prom | Math: Unidad 9 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 9,
+      "number": 76,
+      "score": 6.0,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 9 apariciones (5.6%) | Gap: Regular 5d vs 226.9d prom | Math: Unidad 6 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 10,
+      "number": 81,
+      "score": 5.79,
+      "confidence": 0.463,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 8 apariciones (5.0%) | Gap: Regular 109d vs 194.4d prom | Temp: Patrón Miércoles: 4/60",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 11,
+      "number": 86,
+      "score": 5.62,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 8 apariciones (5.0%) | Gap: Regular 109d vs 144.4d prom | Math: Unidad 6 frecuente + Dece",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 12,
+      "number": 16,
+      "score": 5.61,
+      "confidence": 0.44,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 4 apariciones (2.5%) | Gap: Regular 48d vs 53.0d prom | Math: Unidad 6 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 13,
+      "number": 19,
+      "score": 4.82,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 8 apariciones (5.0%) | Gap: Regular 30d vs 212.3d prom | Math: Unidad 9 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 14,
+      "number": 41,
+      "score": 4.82,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 8 apariciones (5.0%) | Gap: Regular 47d vs 246.7d prom | Math: Unidad 1 frecuente",
+      "recommendation": "Débil"
+    },
+    {
+      "rank": 15,
+      "number": 99,
+      "score": 4.82,
+      "confidence": 0.41,
+      "confidence_level": "Baja",
+      "reasoning": "Freq: 8 apariciones (5.0%) | Gap: Regular 49d vs 235.4d prom | Math: Unidad 9 frecuente",
+      "recommendation": "Débil"
+    }
+  ],
+  "statistics": {
+    "average_score": 10.53,
+    "average_confidence": 0.408,
+    "high_confidence_count": 0,
+    "score_range": "4.8 - 31.0"
+  }
+}
