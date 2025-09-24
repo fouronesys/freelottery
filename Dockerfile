@@ -21,18 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar todo el código de la aplicación
 COPY . .
 
-# Crear directorio para la configuración de Streamlit
-RUN mkdir -p .streamlit
-
-# Crear archivo de configuración de Streamlit
-RUN echo '[server]\n\
-headless = true\n\
-address = "0.0.0.0"\n\
-port = 80\n\
-enableCORS = false\n\
-\n\
-[browser]\n\
-gatherUsageStats = false' > .streamlit/config.toml
+# El archivo .streamlit/config.toml ya está incluido en el código fuente
 
 # Exponer puerto 80 (puerto estándar de CapRover)
 EXPOSE 80
