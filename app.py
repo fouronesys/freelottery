@@ -424,10 +424,14 @@ st.markdown("""
 @st.cache_resource
 def initialize_database():
     """Inicializa solo la base de datos"""
+@st.cache_resource
+def initialize_database_manager():
+    """Inicializa el gestor de base de datos de manera diferida"""
     log_timing("🔄 INICIO: Inicializando DatabaseManager...")
     db = DatabaseManager()
     log_timing("✅ COMPLETADO: DatabaseManager inicializado")
     return db
+
 
 @st.cache_resource
 def initialize_prediction_service(_db):
@@ -437,6 +441,7 @@ def initialize_prediction_service(_db):
     log_timing("✅ COMPLETADO: UnifiedPredictionService inicializado")
     return service
 
+
 @st.cache_resource  
 def initialize_analytics_engine(_db):
     """Inicializa el motor de análisis de manera diferida"""
@@ -445,11 +450,11 @@ def initialize_analytics_engine(_db):
     log_timing("✅ COMPLETADO: UnifiedAnalyticsEngine inicializado")
     return engine
 
+
 def main():
     """Función principal de la aplicación"""
-    
     log_timing("🔄 INICIO: Función main() ejecutándose...")
-    
+
     # Header principal - renderizar INMEDIATAMENTE para evitar "Please wait..."
     log_timing("🔄 INICIO: Renderizando header...")
     st.markdown("""
@@ -459,7 +464,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     log_timing("✅ COMPLETADO: Header renderizado")
-    
+
     # Navegación principal - crear tabs inmediatamente
     log_timing("🔄 INICIO: Creando tabs...")
     tab1, tab2, tab3, tab4 = st.tabs([
@@ -487,6 +492,17 @@ def main():
     
     db = st.session_state.db
     log_timing("🔄 INICIO: Entrando a procesamiento de tabs...")
+    
+    # Inicializar solo la base de datos inmediatamente (operación mínima)
+    if 'db_initialized' not in st.session_state:
+        try:
+            st.session_state.db = initialize_database()
+            st.session_state.db_initialized = True
+        except Exception as e:
+            st.error(f"❌ Error al conectar con la base de datos: {e}")
+            st.stop()
+    
+    db = st.session_state.db
     
     with tab1:
         # Vista inicial ligera - no cargar nada pesado automáticamente
@@ -634,9 +650,9 @@ def render_dashboard_overview(analytics_engine):
     
     with col4:
         st.metric(
-            "Números Faltantes",
-            len(overview['missing_numbers']),
-            delta=f"{100 - overview['general_stats']['coverage_percentage']:.1f}% sin aparecer"
+    "Números Faltantes",
+    len(overview['missing_numbers']),
+    delta=f"{100 - overview['general_stats']['coverage_percentage']:.1f}% sin aparecer"
         )
     
     # Gráficos principales
