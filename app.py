@@ -3,6 +3,12 @@
 Sistema Unificado de Análisis de Quiniela Loteka
 Interfaz simplificada con 3 secciones principales
 """
+def early_task():
+    print("🚀 Fragmento inicial ejecutado antes que todo lo demás", flush=True)
+    import sys
+    sys.stdout.flush()
+
+early_task()
 
 import time
 import sys
