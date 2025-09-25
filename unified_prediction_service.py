@@ -521,8 +521,16 @@ class UnifiedPredictionService:
         
         if 'patterns' in components and 'patterns' in details:
             pattern_data = details['patterns']
-            if pattern_data['favorable_unit'] or pattern_data['favorable_ten']:
-                reasons.append("Patrón de dígitos favorable")
+            # Handle both advanced patterns and basic fallback patterns
+            if 'favorable_unit' in pattern_data and 'favorable_ten' in pattern_data:
+                # Basic fallback pattern structure
+                if pattern_data['favorable_unit'] or pattern_data['favorable_ten']:
+                    reasons.append("Patrón de dígitos favorable")
+            elif 'advanced_patterns' in pattern_data and pattern_data['advanced_patterns']:
+                # Advanced PatternEngine structure
+                total_patterns = pattern_data.get('total_patterns', 0)
+                if total_patterns > 0:
+                    reasons.append(f"Patrones avanzados detectados ({total_patterns})")
         
         return " | ".join(reasons) if reasons else "Análisis combinado"
     
