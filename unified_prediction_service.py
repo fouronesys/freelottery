@@ -1371,7 +1371,7 @@ class UnifiedPredictionService:
                 'name': config['name'],
                 'description': config['description']
             }
-            for key, config in self.strategies.items()
+            for key, config in self.base_strategies.items()
         }
     
     def clear_cache(self):
