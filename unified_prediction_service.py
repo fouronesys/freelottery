@@ -34,11 +34,36 @@ from pattern_engine import PatternEngine
 log_timing("✅ COMPLETADO: Todas las importaciones de UnifiedPredictionService")
 
 class ComponentResult:
-    """Resultado estandarizado de un componente de predicción"""
+    """Resultado estandarizado de un componente de predicción con validación robusta"""
     def __init__(self, score: float, confidence: float, details: Dict[str, Any]):
-        self.score = max(0.0, min(100.0, float(score)))  # Normalizar 0-100
-        self.confidence = max(0.0, min(1.0, float(confidence)))  # Normalizar 0-1
-        self.details = details or {}
+        # Validación y normalización robusta de score
+        try:
+            raw_score = float(score)
+            if math.isnan(raw_score) or math.isinf(raw_score):
+                self.score = 0.0
+            else:
+                self.score = max(0.0, min(100.0, raw_score))
+        except (ValueError, TypeError):
+            self.score = 0.0
+        
+        # Validación y normalización robusta de confidence  
+        try:
+            raw_confidence = float(confidence)
+            if math.isnan(raw_confidence) or math.isinf(raw_confidence):
+                self.confidence = 0.0
+            else:
+                self.confidence = max(0.0, min(1.0, raw_confidence))
+        except (ValueError, TypeError):
+            self.confidence = 0.0
+        
+        # Validación de details
+        self.details = details if isinstance(details, dict) else {}
+        
+        # Verificar coherencia score-confidence
+        if self.score > 0 and self.confidence == 0:
+            self.confidence = 0.1  # Confianza mínima si hay score
+        elif self.score == 0 and self.confidence > 0:
+            self.confidence = 0.0  # Sin confianza si no hay score
 
 class PredictionComponent:
     """Clase base para componentes de predicción estandarizados"""
@@ -421,52 +446,106 @@ class UnifiedPredictionService:
         # Calcular puntuaciones por componente usando la nueva arquitectura
         component_results = {}
         
-        # Usar componentes estandarizados
+        # Verificar disponibilidad de datos básicos
+        try:
+            sample_data = self.db.get_draws_in_period(
+                datetime.now() - timedelta(days=30), datetime.now()
+            )
+            if not sample_data or len(sample_data) < 10:
+                print("⚠️ Datos insuficientes para predicciones confiables")
+                return self._generate_fallback_result(strategy_config_with_weights)
+        except Exception as e:
+            print(f"❌ Error verificando datos: {e}")
+            return self._generate_fallback_result(strategy_config_with_weights)
+        
+        # Usar componentes estandarizados con validación robusta
         for component_name, weight in weights.items():
             if weight > 0 and component_name in self.components:
                 try:
                     print(f"  📊 Calculando {component_name}...")
                     results = self.components[component_name].calculate(days)
-                    if results:
+                    
+                    # APLICAR VALIDACIÓN - esto es lo que faltaba
+                    if results and self._validate_component_results(results, component_name):
                         component_results[component_name] = results
-                        print(f"    ✅ {component_name}: {len(results)} números analizados")
+                        print(f"    ✅ {component_name}: {len(results)} números válidos")
                     else:
-                        print(f"    ⚠️ {component_name}: Sin datos suficientes")
+                        print(f"    ⚠️ {component_name}: Resultados no válidos o insuficientes")
+                        
                 except Exception as e:
                     print(f"    ❌ Error en {component_name}: {e}")
         
+        # Verificar que tenemos al menos un componente válido
+        if not component_results:
+            print("❌ No hay componentes válidos disponibles")
+            return self._generate_fallback_result(strategy_config_with_weights)
+        
         # Combinar resultados usando ponderación inteligente
-        final_scores = self._combine_component_results_v2(component_results, weights)
+        try:
+            final_scores = self._combine_component_results_v2(component_results, weights)
+            
+            if not final_scores:
+                print("⚠️ No se generaron scores válidos")
+                return self._generate_fallback_result(strategy_config_with_weights)
+                
+        except Exception as e:
+            print(f"❌ Error combinando resultados: {e}")
+            return self._generate_fallback_result(strategy_config_with_weights)
         
-        # Filtrar y ordenar predicciones
-        predictions = self._finalize_predictions_v2(
-            final_scores, num_predictions, confidence_threshold
-        )
+        # Filtrar y ordenar predicciones con fallback
+        try:
+            predictions = self._finalize_predictions_v2(
+                final_scores, num_predictions, confidence_threshold
+            )
+            
+            if not predictions or len(predictions) < max(1, num_predictions // 2):
+                print(f"⚠️ Muy pocas predicciones válidas ({len(predictions) if predictions else 0})")
+                # Intentar con umbral más bajo
+                predictions = self._finalize_predictions_v2(
+                    final_scores, num_predictions, max(0.1, confidence_threshold - 0.2)
+                )
+                
+                if not predictions:
+                    print("❌ No se encontraron predicciones válidas, usando fallback")
+                    return self._generate_fallback_result(strategy_config_with_weights)
+                
+        except Exception as e:
+            print(f"❌ Error finalizando predicciones: {e}")
+            return self._generate_fallback_result(strategy_config_with_weights)
         
-        # Generar resultado completo
-        result = {
-            'predictions': predictions,
-            'strategy': strategy_config,
-            'statistics': self._calculate_statistics(predictions),
-            'metadata': {
-                'generated_at': datetime.now().isoformat(),
-                'data_period_days': days,
-                'total_candidates': len(final_scores),
-                'confidence_threshold': confidence_threshold,
-                'components_used': list(component_results.keys())
-            },
-            'component_contributions': self._analyze_component_contributions_v2(
+        # Generar resultado completo con validación
+        try:
+            statistics = self._calculate_statistics(predictions)
+            contributions = self._analyze_component_contributions_v2(
                 component_results, weights, predictions
             )
-        }
-        
-        # Guardar en cache
-        self._cache[cache_key] = {
-            'data': result,
-            'timestamp': datetime.now()
-        }
-        
-        return result
+            
+            result = {
+                'predictions': predictions,
+                'strategy': strategy_config_with_weights,
+                'statistics': statistics,
+                'metadata': {
+                    'generated_at': datetime.now().isoformat(),
+                    'data_period_days': days,
+                    'total_candidates': len(final_scores),
+                    'confidence_threshold': confidence_threshold,
+                    'components_used': list(component_results.keys()),
+                    'validation_passed': True
+                },
+                'component_contributions': contributions
+            }
+            
+            # Guardar en cache solo si el resultado es válido
+            self._cache[cache_key] = {
+                'data': result,
+                'timestamp': datetime.now()
+            }
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Error generando resultado final: {e}")
+            return self._generate_fallback_result(strategy_config_with_weights)
     
     def _combine_component_results_v2(
         self, 
@@ -695,6 +774,120 @@ class UnifiedPredictionService:
                 print(f"    ⚖️ {name}: {base_weights[name]:.2f} → {weight:.2f} ({change:+.2f})")
         
         return normalized_weights
+    
+    def _validate_component_results(self, results: Dict[int, ComponentResult], component_name: str) -> bool:
+        """Valida que los resultados de un componente sean coherentes y utilizables"""
+        
+        if not results:
+            return False
+        
+        # Verificar que tiene un mínimo de números válidos
+        if len(results) < 5:  # Mínimo 5 números para ser útil
+            print(f"    ⚠️ {component_name}: Muy pocos resultados ({len(results)})")
+            return False
+        
+        valid_results = 0
+        total_score = 0
+        total_confidence = 0
+        
+        for number, result in results.items():
+            # Verificar que sea ComponentResult válido
+            if not isinstance(result, ComponentResult):
+                print(f"    ⚠️ {component_name}: Resultado no es ComponentResult para número {number}")
+                continue
+            
+            # Verificar coherencia de valores
+            if result.score < 0 or result.score > 100:
+                print(f"    ⚠️ {component_name}: Score fuera de rango para número {number}: {result.score}")
+                continue
+                
+            if result.confidence < 0 or result.confidence > 1:
+                print(f"    ⚠️ {component_name}: Confianza fuera de rango para número {number}: {result.confidence}")
+                continue
+            
+            # Verificar coherencia score-confidence
+            if result.score > 50 and result.confidence < 0.1:
+                print(f"    ⚠️ {component_name}: Score alto pero confianza muy baja para número {number}")
+                continue
+            
+            valid_results += 1
+            total_score += result.score
+            total_confidence += result.confidence
+        
+        # Verificar que tenemos suficientes resultados válidos
+        if valid_results < len(results) * 0.8:  # Al menos 80% de resultados válidos
+            print(f"    ⚠️ {component_name}: Demasiados resultados inválidos ({valid_results}/{len(results)})")
+            return False
+        
+        # Verificar que no todos los scores son iguales (diversidad)
+        avg_score = total_score / valid_results if valid_results > 0 else 0
+        score_variance = sum((r.score - avg_score) ** 2 for r in results.values() if isinstance(r, ComponentResult))
+        
+        if score_variance < 0.1:  # Muy poca variación
+            print(f"    ⚠️ {component_name}: Muy poca variación en scores")
+            return False
+        
+        return True
+    
+    def _generate_fallback_result(self, strategy_config: Dict) -> Dict[str, Any]:
+        """Genera un resultado de fallback cuando falla la predicción normal"""
+        
+        print("🔄 Generando resultado de fallback...")
+        
+        # Intentar obtener frecuencias básicas como fallback
+        try:
+            basic_frequencies = self.db.get_all_numbers_frequency(365)  # Último año
+            if basic_frequencies:
+                # Generar predicciones básicas basadas solo en frecuencia
+                predictions = []
+                for i, (number, abs_freq, rel_freq) in enumerate(basic_frequencies[:10]):
+                    predictions.append({
+                        'rank': i + 1,
+                        'number': number,
+                        'score': round(rel_freq * 100, 2),
+                        'confidence': 0.3,  # Confianza baja para fallback
+                        'confidence_level': 'Baja',
+                        'active_components': ['frequency_fallback'],
+                        'reasoning': f"Fallback: Frecuencia {rel_freq:.3f}",
+                        'component_details': {'frequency_fallback': {'relative_frequency': rel_freq}}
+                    })
+            else:
+                # Último recurso: números aleatorios con información
+                predictions = []
+                import random
+                numbers = list(range(0, 100))
+                random.shuffle(numbers)
+                for i in range(10):
+                    predictions.append({
+                        'rank': i + 1,
+                        'number': numbers[i],
+                        'score': 1.0,
+                        'confidence': 0.1,
+                        'confidence_level': 'Muy Baja',
+                        'active_components': ['random_fallback'],
+                        'reasoning': "Fallback: Selección aleatoria por falta de datos",
+                        'component_details': {}
+                    })
+                    
+        except Exception as e:
+            print(f"❌ Error en fallback: {e}")
+            predictions = []
+        
+        return {
+            'predictions': predictions,
+            'strategy': strategy_config,
+            'statistics': {},
+            'metadata': {
+                'generated_at': datetime.now().isoformat(),
+                'data_period_days': 0,
+                'total_candidates': len(predictions),
+                'confidence_threshold': 0.0,
+                'components_used': [],
+                'validation_passed': False,
+                'fallback_mode': True
+            },
+            'component_contributions': {}
+        }
     
     def _evaluate_component_data_quality(self, component_name: str, days: int) -> float:
         """Evalúa la calidad de datos disponibles para un componente específico"""
