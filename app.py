@@ -458,6 +458,19 @@ def initialize_analytics_engine(_db):
 
 
 def main():
+
+    def main():
+    log_timing("🔄 INICIO: Función main() ejecutándose...")
+
+    # Mostrar header inmediatamente
+    header_placeholder = st.empty()
+    header_placeholder.markdown("""
+    <div class="main-header">
+        <h1>🎲 Quiniela Loteka - Sistema de Análisis Unificado</h1>
+        <p>Predicciones inteligentes basadas en análisis estadístico avanzado</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     """Función principal de la aplicación"""
     log_timing("🔄 INICIO: Función main() ejecutándose...")
 
