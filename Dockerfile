@@ -1,9 +1,10 @@
-# Usar Python 3.11 como imagen base
+# Usar Python 3.11 como base
 FROM python:3.11-slim
 
+# Directorio de trabajo
 WORKDIR /app
 
-# Instalar gcc/g++ solo si tus paquetes lo requieren
+# Instalar gcc/g++ solo si alguna dependencia lo requiere
 RUN apt-get update && apt-get install -y gcc g++ \
     && rm -rf /var/lib/apt/lists/*
 
@@ -11,15 +12,15 @@ RUN apt-get update && apt-get install -y gcc g++ \
 COPY requirements.txt .
 COPY pyproject.toml .
 
-# Instalar paquetes de Python
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar Python packages
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la app
+# Copiar código de la app
 COPY . .
 
-# Exponer el puerto nativo de Streamlit
+# Exponer el puerto de Streamlit
 EXPOSE 8501
 
-# Ejecutar la app usando la configuración de .streamlit/config.toml
+# CMD simplificado: usa configuración de .streamlit/config.toml
 CMD ["streamlit", "run", "app.py"]
