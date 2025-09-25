@@ -26,6 +26,24 @@ try:
     ML_AVAILABLE = True
 except ImportError:
     ML_AVAILABLE = False
+    # Crear clases mock para mantener compatibilidad
+    class LogisticRegression:
+        def __init__(self, *args, **kwargs): pass
+        def fit(self, *args, **kwargs): pass
+        def predict_proba(self, *args, **kwargs): return []
+    
+    class StandardScaler:
+        def __init__(self, *args, **kwargs): pass
+        def fit_transform(self, X): return X
+    
+    # Mock stats module
+    class MockStats:
+        class weibull_min:
+            @staticmethod
+            def fit(data, floc=0):
+                return 1.0, 0.0, np.mean(data)
+    
+    stats = MockStats()
     print("⚠️ Librerías de ML no disponibles, usando métodos estadísticos básicos")
 
 from database import DatabaseManager
@@ -147,8 +165,8 @@ class SimplifiedScientificPredictor:
             hazard_rate = 1.0 / (mean_gap + 1)
         
         return {
-            'hazard_rate': min(hazard_rate, 1.0),
-            'expected_gap': mean_gap
+            'hazard_rate': float(min(hazard_rate, 1.0)),
+            'expected_gap': float(mean_gap)
         }
     
     def _analyze_temporal_trends(self, number_draws: List[Tuple], total_days: int) -> Dict[str, float]:
